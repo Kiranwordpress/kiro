@@ -524,6 +524,31 @@
     /* ── Action buttons in table ────────────────────────────────────────── */
     .actions { display: flex; gap: 5px; flex-wrap: nowrap; }
 
+    /* ── Sticky actions column ──────────────────────────────────────────── */
+    th.col-actions, td.col-actions {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: var(--surface2);
+      border-right: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr:hover td.col-actions { background: var(--bg); }
+
+    /* ── Edit modal notice ──────────────────────────────────────────────── */
+    .edit-notice {
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 0.83rem;
+      line-height: 1.6;
+      display: none;
+    }
+
+    .edit-notice.warn  { background: var(--yellow-lt); border: 1px solid var(--yellow); color: var(--yellow); display: block; }
+    .edit-notice.info  { background: var(--accent-lt); border: 1px solid var(--accent);  color: var(--accent);  display: block; }
+
     /* ── Empty state ────────────────────────────────────────────────────── */
     .empty-state {
       text-align: center;
@@ -905,6 +930,63 @@
   </div>
 </div>
 
+<!-- ── Edit FD Modal ──────────────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="editModal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div class="modal-title" id="editModalTitle">✏️ Edit Fixed Deposit</div>
+      <button class="modal-close" onclick="closeEditModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="edit-notice" id="editNotice"></div>
+      <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(185px,1fr))">
+        <div class="field">
+          <label>Bank Name *</label>
+          <input type="text" id="eFBank" placeholder="e.g. SBI, HDFC" list="bankSuggestions" />
+        </div>
+        <div class="field">
+          <label>FD / Account Number</label>
+          <input type="text" id="eFDNum" placeholder="e.g. FD-2024-001" />
+        </div>
+        <div class="field">
+          <label>Principal (₹) *</label>
+          <input type="number" id="ePrincipal" placeholder="1,00,000" min="1" />
+        </div>
+        <div class="field">
+          <label>Interest Rate (%) *</label>
+          <input type="number" id="eRate" step="0.01" min="0.01" placeholder="7.50" />
+        </div>
+        <div class="field">
+          <label>Start Date *</label>
+          <input type="date" id="eStart" />
+        </div>
+        <div class="field">
+          <label>Maturity Date *</label>
+          <input type="date" id="eMaturity" />
+        </div>
+        <div class="field">
+          <label>Compounding Frequency</label>
+          <select id="eComp">
+            <option value="1">Annually (1×/yr)</option>
+            <option value="2">Half-Yearly (2×/yr)</option>
+            <option value="4">Quarterly (4×/yr)</option>
+            <option value="12">Monthly (12×/yr)</option>
+            <option value="365">Daily (365×/yr)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Notes</label>
+          <input type="text" id="eNotes" placeholder="e.g. Senior citizen rate" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditModal()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Toast container ───────────────────────────────────────────────────── -->
 <div class="toast-container" id="toastContainer"></div>
 
@@ -1107,6 +1189,7 @@ function renderBankSections() {
         <table>
           <thead>
             <tr>
+              <th class="col-actions">Actions</th>
               <th>#</th>
               <th>FD Number</th>
               <th>Principal (₹)</th>
@@ -1120,7 +1203,6 @@ function renderBankSections() {
               <th>Interest Earned (₹)</th>
               <th>Maturity Value (₹)</th>
               <th>Status</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody>${calcs.map((x, i) => rowHTML(x.fd, x.calc, x.status, i + 1)).join('')}</tbody>
@@ -1158,6 +1240,7 @@ function rowHTML(fd, calc, status, idx) {
   }
 
   return `<tr>
+    <td class="col-actions"><div class="actions">${actionBtns.join('')}</div></td>
     <td class="td-muted">${idx}</td>
     <td><span class="td-bold">${esc(fd.fdNum || '—')}</span>${renewalDot}</td>
     <td class="td-blue">${fmt(fd.principal)}</td>
@@ -1178,7 +1261,6 @@ function rowHTML(fd, calc, status, idx) {
     <td style="color:var(--yellow);font-weight:600">${fmt(calc.interestEarned)}</td>
     <td class="td-bold">${fmt(calc.maturityValue)}</td>
     <td><span class="badge ${badgeClass}">${status}</span></td>
-    <td><div class="actions">${actionBtns.join('')}</div></td>
   </tr>`;
 }
 
@@ -1228,42 +1310,84 @@ function saveFD() {
   if (!mat)       { showToast('⚠️ Maturity date is required', 'warn'); return; }
   if (new Date(mat) <= new Date(start)) { showToast('⚠️ Maturity must be after start date', 'warn'); return; }
 
-  if (editId) {
-    const idx = fds.findIndex(f => f.id === editId);
-    if (idx !== -1) {
-      fds[idx] = { ...fds[idx], bank, fdNum, principal, rate, startDate: start, maturityDate: mat, compounding: comp, notes };
-      showToast('✅ FD updated successfully');
-    }
-    editId = null;
-    setFormMode('add');
-  } else {
-    fds.push({
-      id: Date.now().toString(),
-      bank, fdNum, principal, rate,
-      startDate: start, maturityDate: mat,
-      compounding: comp, notes,
-      renewedFromId: null, renewedToId: null,
-      createdAt: new Date().toISOString(),
-    });
-    showToast('✅ FD added successfully');
-  }
+  fds.push({
+    id: Date.now().toString(),
+    bank, fdNum, principal, rate,
+    startDate: start, maturityDate: mat,
+    compounding: comp, notes,
+    renewedFromId: null, renewedToId: null,
+    createdAt: new Date().toISOString(),
+  });
+  showToast('✅ FD added successfully');
   save(); clearForm(); render();
 }
 
 function editFD(id) {
   const fd = fds.find(f => f.id === id);
   if (!fd) return;
-  editId = id;
-  document.getElementById('fBank').value      = fd.bank;
-  document.getElementById('fFDNum').value     = fd.fdNum || '';
-  document.getElementById('fPrincipal').value = fd.principal;
-  document.getElementById('fRate').value      = fd.rate;
-  document.getElementById('fStart').value     = fd.startDate;
-  document.getElementById('fMaturity').value  = fd.maturityDate;
-  document.getElementById('fComp').value      = fd.compounding;
-  document.getElementById('fNotes').value     = fd.notes || '';
-  setFormMode('edit');
-  document.getElementById('fdForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const status = getStatus(fd);
+  const calc   = calcFD(fd);
+
+  // Populate modal fields
+  document.getElementById('eFBank').value     = fd.bank;
+  document.getElementById('eFDNum').value     = fd.fdNum || '';
+  document.getElementById('ePrincipal').value = fd.principal;
+  document.getElementById('eRate').value      = fd.rate;
+  document.getElementById('eStart').value     = fd.startDate;
+  document.getElementById('eMaturity').value  = fd.maturityDate;
+  document.getElementById('eComp').value      = fd.compounding;
+  document.getElementById('eNotes').value     = fd.notes || '';
+
+  // Show context notice
+  const notice = document.getElementById('editNotice');
+  if (status === 'Matured') {
+    notice.className = 'edit-notice warn';
+    notice.innerHTML = `⚠️ This FD has <strong>matured</strong>. You can update the principal, rate, and dates to reflect a new term — or use <strong>🔄 Renew</strong> to create a linked renewal record instead.`;
+  } else if (status === 'Upcoming') {
+    notice.className = 'edit-notice info';
+    notice.innerHTML = `ℹ️ This FD matures within <strong>30 days</strong>. Update details as needed.`;
+  } else {
+    notice.className = 'edit-notice';
+  }
+
+  document.getElementById('editModalTitle').textContent = `✏️ Edit — ${fd.bank} ${fd.fdNum ? '(' + fd.fdNum + ')' : ''}`;
+  document.getElementById('editModal')._editId = id;
+  document.getElementById('editModal').classList.add('open');
+}
+
+function saveEditModal() {
+  const id  = document.getElementById('editModal')._editId;
+  if (!id) return;
+
+  const bank      = document.getElementById('eFBank').value.trim();
+  const fdNum     = document.getElementById('eFDNum').value.trim();
+  const principal = document.getElementById('ePrincipal').value;
+  const rate      = document.getElementById('eRate').value;
+  const start     = document.getElementById('eStart').value;
+  const mat       = document.getElementById('eMaturity').value;
+  const comp      = document.getElementById('eComp').value;
+  const notes     = document.getElementById('eNotes').value.trim();
+
+  if (!bank)      { showToast('⚠️ Bank name is required', 'warn'); return; }
+  if (!principal) { showToast('⚠️ Principal amount is required', 'warn'); return; }
+  if (!rate)      { showToast('⚠️ Interest rate is required', 'warn'); return; }
+  if (!start)     { showToast('⚠️ Start date is required', 'warn'); return; }
+  if (!mat)       { showToast('⚠️ Maturity date is required', 'warn'); return; }
+  if (new Date(mat) <= new Date(start)) { showToast('⚠️ Maturity must be after start date', 'warn'); return; }
+
+  const idx = fds.findIndex(f => f.id === id);
+  if (idx !== -1) {
+    fds[idx] = { ...fds[idx], bank, fdNum, principal, rate, startDate: start, maturityDate: mat, compounding: comp, notes };
+    save(); render();
+    showToast('✅ FD updated successfully');
+  }
+  closeEditModal();
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('open');
+  document.getElementById('editModal')._editId = null;
 }
 
 function deleteFD(id) {
@@ -1276,18 +1400,11 @@ function deleteFD(id) {
 }
 
 function cancelEdit() {
-  editId = null;
   clearForm();
-  setFormMode('add');
 }
 
 function setFormMode(mode) {
-  const isEdit = mode === 'edit';
-  document.getElementById('formTitle').innerHTML = isEdit
-    ? '<span>✏️</span> Edit Fixed Deposit'
-    : '<span>➕</span> Add New Fixed Deposit';
-  document.getElementById('cancelBtn').style.display  = isEdit ? '' : 'none';
-  document.getElementById('cancelBtn2').style.display = isEdit ? '' : 'none';
+  // no-op — editing now uses the edit modal
 }
 
 function clearForm() {
@@ -1485,6 +1602,9 @@ document.getElementById('renewalModal').addEventListener('click', e => {
 });
 document.getElementById('historyModal').addEventListener('click', e => {
   if (e.target === e.currentTarget) closeHistoryModal();
+});
+document.getElementById('editModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeEditModal();
 });
 
 // ════════════════════════════════════════════════════════════════════════════
