@@ -128,6 +128,21 @@
       color: var(--muted);
     }
 
+    .sync-status {
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      transition: all .3s;
+    }
+
+    .sync-status.ok   { background: var(--green-lt);  color: var(--green); }
+    .sync-status.warn { background: var(--yellow-lt); color: var(--yellow); }
+    .sync-status.info { background: var(--accent-lt); color: var(--accent); }
+
+    .sync-spinner { font-size: 0.9rem; animation: spin 1s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     /* ── Page wrapper ───────────────────────────────────────────────────── */
     .page { max-width: 1400px; margin: 0 auto; padding: 28px 20px 80px; }
 
@@ -746,6 +761,8 @@
     FD Tracker
   </div>
   <div class="topbar-right">
+    <span class="sync-status" id="syncStatus"></span>
+    <span class="sync-spinner" id="syncSpinner" style="display:none">⏳</span>
     <span class="last-updated" id="lastUpdated"></span>
     <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" id="themeBtn">🌙</button>
   </div>
@@ -992,22 +1009,18 @@
 
 <script>
 // ════════════════════════════════════════════════════════════════════════════
+//  CONFIG — paste your Apps Script Web App URL here after deploying
+// ════════════════════════════════════════════════════════════════════════════
+const SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
+
+// ════════════════════════════════════════════════════════════════════════════
 //  DATA
 // ════════════════════════════════════════════════════════════════════════════
-let fds    = JSON.parse(localStorage.getItem('fd_tracker_v3') || '[]');
-let editId = null;
-let renewingId = null;
+let fds          = [];
+let editId       = null;
+let renewingId   = null;
 let activeFilter = 'all';
-
-// Migrate from v2
-const oldData = localStorage.getItem('fd_tracker_v2');
-if (oldData && fds.length === 0) {
-  try {
-    const old = JSON.parse(oldData);
-    fds = old.map(fd => ({ ...fd, renewedFromId: null, renewedToId: null }));
-    save();
-  } catch(e) {}
-}
+let isSyncing    = false;
 
 // ════════════════════════════════════════════════════════════════════════════
 //  CALCULATIONS
@@ -1416,7 +1429,123 @@ function clearForm() {
 }
 
 function save() {
+  // Keep localStorage as offline cache
   localStorage.setItem('fd_tracker_v3', JSON.stringify(fds));
+  // Sync to Google Sheets
+  sheetSaveAll();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  GOOGLE SHEETS SYNC
+// ════════════════════════════════════════════════════════════════════════════
+
+function isScriptConfigured() {
+  return SCRIPT_URL && SCRIPT_URL !== 'YOUR_APPS_SCRIPT_URL_HERE';
+}
+
+// Load all FDs from sheet on startup
+async function sheetLoadAll() {
+  if (!isScriptConfigured()) {
+    // Fall back to localStorage if script not configured
+    const cached = localStorage.getItem('fd_tracker_v3');
+    if (cached) {
+      try { fds = JSON.parse(cached); } catch(e) { fds = []; }
+    }
+    render();
+    showSyncStatus('⚠️ Google Sheets not connected. Using local storage.', 'warn');
+    return;
+  }
+
+  showSyncStatus('🔄 Loading from Google Sheets…', 'info');
+  setSyncSpinner(true);
+  try {
+    const res  = await fetch(`${SCRIPT_URL}?action=getAll`, { cache: 'no-store' });
+    const json = await res.json();
+    if (json.ok) {
+      fds = json.data.map(normalizeRow);
+      // Update local cache
+      localStorage.setItem('fd_tracker_v3', JSON.stringify(fds));
+      render();
+      showSyncStatus('✅ Synced from Google Sheets', 'ok');
+    } else {
+      throw new Error(json.error || 'Load failed');
+    }
+  } catch(err) {
+    // Fallback to cache
+    const cached = localStorage.getItem('fd_tracker_v3');
+    if (cached) {
+      try { fds = JSON.parse(cached); } catch(e) { fds = []; }
+    }
+    render();
+    showSyncStatus('⚠️ Sheet offline — showing cached data', 'warn');
+    console.error('Sheet load error:', err);
+  } finally {
+    setSyncSpinner(false);
+  }
+}
+
+// Save entire FD list to sheet (called after every change)
+async function sheetSaveAll() {
+  if (!isScriptConfigured()) return;
+  if (isSyncing) return;
+  isSyncing = true;
+  setSyncSpinner(true);
+
+  try {
+    const res  = await fetch(SCRIPT_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'text/plain' }, // Apps Script requires text/plain for POST
+      body:    JSON.stringify({ action: 'saveAll', data: fds }),
+    });
+    const json = await res.json();
+    if (json.ok) {
+      localStorage.setItem('fd_tracker_v3', JSON.stringify(fds));
+      showSyncStatus(`✅ Saved to Google Sheets (${json.count} FDs)`, 'ok');
+    } else {
+      throw new Error(json.error || 'Save failed');
+    }
+  } catch(err) {
+    showSyncStatus('⚠️ Could not save to sheet — data kept locally', 'warn');
+    console.error('Sheet save error:', err);
+  } finally {
+    isSyncing = false;
+    setSyncSpinner(false);
+  }
+}
+
+// Normalize a row from the sheet (all values come as strings)
+function normalizeRow(row) {
+  return {
+    id:            row.id            || '',
+    bank:          row.bank          || '',
+    fdNum:         row.fdNum         || '',
+    principal:     row.principal     || '0',
+    rate:          row.rate          || '0',
+    startDate:     row.startDate     || '',
+    maturityDate:  row.maturityDate  || '',
+    compounding:   row.compounding   || '4',
+    notes:         row.notes         || '',
+    renewedFromId: row.renewedFromId || null,
+    renewedToId:   row.renewedToId   || null,
+    createdAt:     row.createdAt     || '',
+  };
+}
+
+// ── Sync status bar ──────────────────────────────────────────────────────────
+function showSyncStatus(msg, type) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'sync-status ' + (type || '');
+  clearTimeout(el._hideTimer);
+  if (type === 'ok') {
+    el._hideTimer = setTimeout(() => { el.textContent = ''; el.className = 'sync-status'; }, 4000);
+  }
+}
+
+function setSyncSpinner(on) {
+  const el = document.getElementById('syncSpinner');
+  if (el) el.style.display = on ? 'inline-block' : 'none';
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1649,8 +1778,8 @@ function getPrincipalValue(id) {
 //  INIT
 // ════════════════════════════════════════════════════════════════════════════
 document.getElementById('fStart').valueAsDate = new Date();
-render();
-setInterval(render, 60000); // refresh every minute
+sheetLoadAll();                   // load from Google Sheets (falls back to localStorage)
+setInterval(sheetLoadAll, 60000); // refresh every minute
 </script>
 </body>
 </html>
