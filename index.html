@@ -764,6 +764,9 @@
     <span class="sync-status" id="syncStatus"></span>
     <span class="sync-spinner" id="syncSpinner" style="display:none">⏳</span>
     <span class="last-updated" id="lastUpdated"></span>
+    <button class="btn btn-success" onclick="pushLocalToSheet()" id="pushBtn" title="Push all locally saved data to Google Sheets" style="font-size:0.78rem;padding:6px 12px;display:none">
+      ☁️ Push to Sheet
+    </button>
     <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" id="themeBtn">🌙</button>
   </div>
 </nav>
@@ -1446,11 +1449,8 @@ function isScriptConfigured() {
 // Load all FDs from sheet on startup
 async function sheetLoadAll() {
   if (!isScriptConfigured()) {
-    // Fall back to localStorage if script not configured
     const cached = localStorage.getItem('fd_tracker_v3');
-    if (cached) {
-      try { fds = JSON.parse(cached); } catch(e) { fds = []; }
-    }
+    if (cached) { try { fds = JSON.parse(cached); } catch(e) { fds = []; } }
     render();
     showSyncStatus('⚠️ Google Sheets not connected. Using local storage.', 'warn');
     return;
@@ -1462,20 +1462,30 @@ async function sheetLoadAll() {
     const res  = await fetch(`${SCRIPT_URL}?action=getAll`, { cache: 'no-store' });
     const json = await res.json();
     if (json.ok) {
-      fds = json.data.map(normalizeRow);
-      // Update local cache
-      localStorage.setItem('fd_tracker_v3', JSON.stringify(fds));
-      render();
-      showSyncStatus('✅ Synced from Google Sheets', 'ok');
+      const sheetData  = json.data.map(normalizeRow).filter(f => f.id);
+      const cached     = localStorage.getItem('fd_tracker_v3');
+      let   localData  = [];
+      try { localData = JSON.parse(cached || '[]'); } catch(e) {}
+
+      if (sheetData.length === 0 && localData.length > 0) {
+        // Sheet empty but local has data — show push button
+        fds = localData;
+        render();
+        showSyncStatus('⚠️ Sheet is empty — click "☁️ Push to Sheet" to upload your data', 'warn');
+        document.getElementById('pushBtn').style.display = '';
+      } else {
+        fds = sheetData;
+        localStorage.setItem('fd_tracker_v3', JSON.stringify(fds));
+        render();
+        showSyncStatus('✅ Synced from Google Sheets', 'ok');
+        document.getElementById('pushBtn').style.display = 'none';
+      }
     } else {
       throw new Error(json.error || 'Load failed');
     }
   } catch(err) {
-    // Fallback to cache
     const cached = localStorage.getItem('fd_tracker_v3');
-    if (cached) {
-      try { fds = JSON.parse(cached); } catch(e) { fds = []; }
-    }
+    if (cached) { try { fds = JSON.parse(cached); } catch(e) { fds = []; } }
     render();
     showSyncStatus('⚠️ Sheet offline — showing cached data', 'warn');
     console.error('Sheet load error:', err);
@@ -1510,6 +1520,49 @@ async function sheetSaveAll() {
   } finally {
     isSyncing = false;
     setSyncSpinner(false);
+  }
+}
+
+// One-time push: upload all localStorage data to sheet
+async function pushLocalToSheet() {
+  const cached = localStorage.getItem('fd_tracker_v3');
+  let localData = [];
+  try { localData = JSON.parse(cached || '[]'); } catch(e) {}
+
+  if (localData.length === 0) {
+    showSyncStatus('⚠️ No local data found to push', 'warn');
+    return;
+  }
+
+  if (!confirm(`Push ${localData.length} FD(s) from this device to Google Sheets?\n\nThis will overwrite any existing data in the sheet.`)) return;
+
+  showSyncStatus('🔄 Pushing to Google Sheets…', 'info');
+  setSyncSpinner(true);
+  const btn = document.getElementById('pushBtn');
+  btn.disabled = true;
+
+  try {
+    const res  = await fetch(SCRIPT_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body:    JSON.stringify({ action: 'saveAll', data: localData }),
+    });
+    const json = await res.json();
+    if (json.ok) {
+      fds = localData;
+      localStorage.setItem('fd_tracker_v3', JSON.stringify(fds));
+      render();
+      showSyncStatus(`✅ ${json.count} FD(s) pushed to Google Sheets!`, 'ok');
+      btn.style.display = 'none';
+    } else {
+      throw new Error(json.error || 'Push failed');
+    }
+  } catch(err) {
+    showSyncStatus('⚠️ Push failed — check Apps Script is deployed as "Anyone"', 'warn');
+    console.error('Push error:', err);
+  } finally {
+    setSyncSpinner(false);
+    btn.disabled = false;
   }
 }
 
