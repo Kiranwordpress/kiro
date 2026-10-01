@@ -767,6 +767,9 @@
     <button class="btn btn-success" onclick="pushLocalToSheet()" id="pushBtn" title="Push all locally saved data to Google Sheets" style="font-size:0.78rem;padding:6px 12px;display:none">
       ☁️ Push to Sheet
     </button>
+    <button class="btn btn-ghost" onclick="recalcAndSync()" id="recalcBtn" title="Fix dates and recalculate all sheet columns" style="font-size:0.78rem;padding:6px 12px;display:none">
+      🔧 Fix Sheet
+    </button>
     <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" id="themeBtn">🌙</button>
   </div>
 </nav>
@@ -1479,6 +1482,8 @@ async function sheetLoadAll() {
         render();
         showSyncStatus('✅ Synced from Google Sheets', 'ok');
         document.getElementById('pushBtn').style.display = 'none';
+        // Show Fix Sheet button always so user can refresh calculated columns anytime
+        document.getElementById('recalcBtn').style.display = '';
       }
     } else {
       throw new Error(json.error || 'Load failed');
@@ -1598,6 +1603,62 @@ async function pushLocalToSheet() {
   }
 }
 
+// Fix dates + recalculate all columns and re-push to sheet
+async function recalcAndSync() {
+  if (!isScriptConfigured()) return;
+  if (!confirm(`This will clean up all dates and rewrite all calculated columns (current value, interest, status, etc.) in the sheet.\n\nContinue?`)) return;
+
+  showSyncStatus('🔄 Fixing and recalculating…', 'info');
+  setSyncSpinner(true);
+  const btn = document.getElementById('recalcBtn');
+  btn.disabled = true;
+
+  try {
+    // Clean dates on current fds in memory
+    fds = fds.map(fd => ({
+      ...fd,
+      startDate:    cleanDate(fd.startDate),
+      maturityDate: cleanDate(fd.maturityDate),
+    }));
+
+    // Enrich with fresh calculations
+    const enriched = fds.map(fd => {
+      const calc   = calcFD(fd);
+      const status = getStatus(fd);
+      return {
+        ...fd,
+        daysElapsed:    calc.daysElapsed,
+        totalDays:      calc.totalDays,
+        progress_pct:   calc.progress,
+        currentValue:   calc.currentValue,
+        interestEarned: calc.interestEarned,
+        maturityValue:  calc.maturityValue,
+        status,
+      };
+    });
+
+    const res  = await fetch(SCRIPT_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body:    JSON.stringify({ action: 'saveAll', data: enriched }),
+    });
+    const json = await res.json();
+    if (json.ok) {
+      localStorage.setItem('fd_tracker_v3', JSON.stringify(fds));
+      render();
+      showSyncStatus(`✅ Sheet fixed! ${json.count} FDs updated with calculated columns.`, 'ok');
+    } else {
+      throw new Error(json.error || 'Recalc failed');
+    }
+  } catch(err) {
+    showSyncStatus('⚠️ Fix failed — make sure the new Apps Script is deployed', 'warn');
+    console.error('Recalc error:', err);
+  } finally {
+    setSyncSpinner(false);
+    btn.disabled = false;
+  }
+}
+
 // Normalize a row from the sheet (all values come as strings)
 function normalizeRow(row) {
   return {
@@ -1606,14 +1667,29 @@ function normalizeRow(row) {
     fdNum:         row.fdNum         || '',
     principal:     row.principal     || '0',
     rate:          row.rate          || '0',
-    startDate:     row.startDate     || '',
-    maturityDate:  row.maturityDate  || '',
+    startDate:     cleanDate(row.startDate),
+    maturityDate:  cleanDate(row.maturityDate),
     compounding:   row.compounding   || '4',
     notes:         row.notes         || '',
     renewedFromId: row.renewedFromId || null,
     renewedToId:   row.renewedToId   || null,
     createdAt:     row.createdAt     || '',
   };
+}
+
+// Convert any date format to YYYY-MM-DD
+function cleanDate(val) {
+  if (!val || val === 'null' || val === '') return '';
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+  // Try to parse any other format (e.g. "Mon Apr 13 2026 12:30:00 GMT+0530")
+  const d = new Date(val);
+  if (!isNaN(d)) {
+    return d.getFullYear() + '-'
+      + String(d.getMonth() + 1).padStart(2, '0') + '-'
+      + String(d.getDate()).padStart(2, '0');
+  }
+  return val;
 }
 
 // ── Sync status bar ──────────────────────────────────────────────────────────
