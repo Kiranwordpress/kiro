@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fixed Deposit Tracker</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #222636;
+      --border: #2e3347;
+      --accent: #4f8ef7;
+      --accent2: #6ee7b7;
+      --danger: #f87171;
+      --warn: #fbbf24;
+      --text: #e2e8f0;
+      --muted: #7c8db0;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      padding: 24px 16px 60px;
+    }
+
+    header {
+      max-width: 1400px;
+      margin: 0 auto 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    header h1 span { color: var(--accent); }
+
+    .header-meta {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    /* Summary cards */
+    .summary {
+      max-width: 1400px;
+      margin: 0 auto 28px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+
+    .card .label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .card .value {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .card .value.green  { color: var(--accent2); }
+    .card .value.blue   { color: var(--accent); }
+    .card .value.yellow { color: var(--warn); }
+    .card .value.red    { color: var(--danger); }
+
+    /* Add FD form */
+    .form-wrap {
+      max-width: 1400px;
+      margin: 0 auto 28px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+    }
+
+    .form-wrap h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 18px;
+      color: var(--text);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .field input, .field select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.9rem;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field input:focus, .field select:focus {
+      border-color: var(--accent);
+    }
+
+    .field input::placeholder { color: var(--muted); }
+
+    .form-actions {
+      margin-top: 18px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    button:active { transform: scale(0.97); }
+    button:hover  { opacity: 0.85; }
+
+    .btn-primary  { background: var(--accent);  color: #fff; }
+    .btn-success  { background: var(--accent2); color: #0f1117; }
+    .btn-danger   { background: var(--danger);  color: #fff; padding: 6px 12px; font-size: 0.78rem; }
+    .btn-edit     { background: var(--warn);    color: #0f1117; padding: 6px 12px; font-size: 0.78rem; }
+    .btn-cancel   { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+    /* Table */
+    .table-wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+      overflow-x: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+      min-width: 900px;
+    }
+
+    thead tr {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      padding: 12px 14px;
+      text-align: left;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    tbody tr:hover { background: var(--surface2); }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+    }
+
+    .badge-active   { background: rgba(79,142,247,0.15);  color: var(--accent); }
+    .badge-matured  { background: rgba(110,231,183,0.15); color: var(--accent2); }
+    .badge-upcoming { background: rgba(251,191,36,0.15);  color: var(--warn); }
+
+    .num-green { color: var(--accent2); }
+    .num-blue  { color: var(--accent); }
+    .num-muted { color: var(--muted); font-size: 0.8rem; }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+    /* Progress bar */
+    .progress-bar {
+      background: var(--border);
+      border-radius: 4px;
+      height: 5px;
+      width: 100px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: var(--accent);
+      transition: width 0.3s;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 0.85rem;
+      color: var(--text);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s;
+      z-index: 999;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr 1fr; }
+      .card .value { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🏦 Fixed <span>Deposit</span> Tracker</h1>
+  <div class="header-meta" id="lastUpdated"></div>
+</header>
+
+<!-- Summary Cards -->
+<div class="summary">
+  <div class="card">
+    <div class="label">Total Invested</div>
+    <div class="value blue" id="sumInvested">₹0</div>
+  </div>
+  <div class="card">
+    <div class="label">Current Value</div>
+    <div class="value green" id="sumCurrent">₹0</div>
+  </div>
+  <div class="card">
+    <div class="label">Interest Earned</div>
+    <div class="value yellow" id="sumInterest">₹0</div>
+  </div>
+  <div class="card">
+    <div class="label">Total Maturity Value</div>
+    <div class="value green" id="sumMaturity">₹0</div>
+  </div>
+  <div class="card">
+    <div class="label">Active FDs</div>
+    <div class="value blue" id="countActive">0</div>
+  </div>
+  <div class="card">
+    <div class="label">Matured FDs</div>
+    <div class="value" id="countMatured">0</div>
+  </div>
+</div>
+
+<!-- Add / Edit Form -->
+<div class="form-wrap">
+  <h2 id="formTitle">➕ Add New Fixed Deposit</h2>
+  <div class="form-grid">
+    <div class="field">
+      <label>Bank Name</label>
+      <input type="text" id="fBank" placeholder="e.g. SBI, HDFC" />
+    </div>
+    <div class="field">
+      <label>FD Number</label>
+      <input type="text" id="fFDNum" placeholder="e.g. FD-001" />
+    </div>
+    <div class="field">
+      <label>Principal (₹)</label>
+      <input type="number" id="fPrincipal" placeholder="50000" min="1" />
+    </div>
+    <div class="field">
+      <label>Interest Rate (%)</label>
+      <input type="number" id="fRate" placeholder="7.5" step="0.01" min="0.01" />
+    </div>
+    <div class="field">
+      <label>Start Date</label>
+      <input type="date" id="fStart" />
+    </div>
+    <div class="field">
+      <label>Maturity Date</label>
+      <input type="date" id="fMaturity" />
+    </div>
+    <div class="field">
+      <label>Compounding / Year</label>
+      <select id="fComp">
+        <option value="1">Annually (1x)</option>
+        <option value="2">Half-yearly (2x)</option>
+        <option value="4" selected>Quarterly (4x)</option>
+        <option value="12">Monthly (12x)</option>
+        <option value="365">Daily (365x)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Notes (optional)</label>
+      <input type="text" id="fNotes" placeholder="e.g. Senior citizen rate" />
+    </div>
+  </div>
+  <div class="form-actions">
+    <button class="btn-primary" onclick="saveFD()">💾 Save FD</button>
+    <button class="btn-cancel" id="cancelBtn" onclick="cancelEdit()" style="display:none">Cancel</button>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Bank</th>
+        <th>FD Number</th>
+        <th>Principal (₹)</th>
+        <th>Rate (%)</th>
+        <th>Start Date</th>
+        <th>Maturity Date</th>
+        <th>Comp/Yr</th>
+        <th>Days Elapsed</th>
+        <th>Progress</th>
+        <th>Current Value (₹)</th>
+        <th>Interest Earned (₹)</th>
+        <th>Maturity Value (₹)</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="fdBody">
+      <tr id="emptyRow">
+        <td colspan="15">
+          <div class="empty-state">
+            <div class="icon">📋</div>
+            <div>No FDs added yet. Add your first Fixed Deposit above.</div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ─── Data ────────────────────────────────────────────────────────────────────
+  let fds = JSON.parse(localStorage.getItem('fd_tracker_v2') || '[]');
+  let editId = null;
+
+  // Set default start date to today
+  document.getElementById('fStart').valueAsDate = new Date();
+
+  // ─── Calculations ────────────────────────────────────────────────────────────
+  function calcFD(fd, asOfDate) {
+    const start    = new Date(fd.startDate);
+    const maturity = new Date(fd.maturityDate);
+    const now      = asOfDate || new Date();
+    const P        = parseFloat(fd.principal);
+    const r        = parseFloat(fd.rate) / 100;
+    const n        = parseInt(fd.compounding);
+
+    // Total tenure in years
+    const totalDays   = Math.max((maturity - start) / 86400000, 1);
+    const totalYears  = totalDays / 365;
+
+    // Maturity value (full tenure)
+    const maturityValue = P * Math.pow(1 + r / n, n * totalYears);
+
+    // Days elapsed (capped at maturity)
+    const effectiveNow = now > maturity ? maturity : now;
+    const daysElapsed  = Math.max(Math.floor((effectiveNow - start) / 86400000), 0);
+    const yearsElapsed = daysElapsed / 365;
+
+    // Current value
+    const currentValue = P * Math.pow(1 + r / n, n * yearsElapsed);
+
+    return {
+      totalDays,
+      daysElapsed,
+      currentValue: Math.round(currentValue * 100) / 100,
+      interestEarned: Math.round((currentValue - P) * 100) / 100,
+      maturityValue: Math.round(maturityValue * 100) / 100,
+    };
+  }
+
+  function getStatus(fd) {
+    const now      = new Date();
+    const maturity = new Date(fd.maturityDate);
+    const start    = new Date(fd.startDate);
+    if (now >= maturity) return 'Matured';
+    const daysLeft = Math.ceil((maturity - now) / 86400000);
+    if (daysLeft <= 30) return 'Upcoming';
+    return 'Active';
+  }
+
+  // ─── Formatting ──────────────────────────────────────────────────────────────
+  function fmt(n) {
+    return '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  function compLabel(n) {
+    const map = { 1: '1 (Annual)', 2: '2 (Half-yr)', 4: '4 (Quarterly)', 12: '12 (Monthly)', 365: '365 (Daily)' };
+    return map[n] || n;
+  }
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
+  function render() {
+    const body = document.getElementById('fdBody');
+    body.innerHTML = '';
+
+    if (fds.length === 0) {
+      body.innerHTML = `
+        <tr id="emptyRow"><td colspan="15">
+          <div class="empty-state">
+            <div class="icon">📋</div>
+            <div>No FDs added yet. Add your first Fixed Deposit above.</div>
+          </div>
+        </td></tr>`;
+      updateSummary([]);
+      return;
+    }
+
+    let results = [];
+    fds.forEach((fd, i) => {
+      const calc   = calcFD(fd);
+      const status = getStatus(fd);
+      const pct    = Math.min(100, Math.round((calc.daysElapsed / calc.totalDays) * 100));
+      results.push({ fd, calc, status });
+
+      const badgeClass = status === 'Matured' ? 'badge-matured'
+                       : status === 'Upcoming' ? 'badge-upcoming'
+                       : 'badge-active';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="num-muted">${i + 1}</td>
+        <td><strong>${esc(fd.bank)}</strong></td>
+        <td class="num-muted">${esc(fd.fdNum)}</td>
+        <td>${fmt(fd.principal)}</td>
+        <td>${parseFloat(fd.rate).toFixed(2)}%</td>
+        <td>${fmtDate(fd.startDate)}</td>
+        <td>${fmtDate(fd.maturityDate)}</td>
+        <td class="num-muted">${compLabel(fd.compounding)}</td>
+        <td>${calc.daysElapsed.toLocaleString()} days</td>
+        <td>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${pct}%"></div>
+          </div>
+          <div class="num-muted" style="margin-top:3px;font-size:0.72rem">${pct}%</div>
+        </td>
+        <td class="num-green"><strong>${fmt(calc.currentValue)}</strong></td>
+        <td class="num-blue">${fmt(calc.interestEarned)}</td>
+        <td><strong>${fmt(calc.maturityValue)}</strong></td>
+        <td><span class="badge ${badgeClass}">${status}</span></td>
+        <td>
+          <button class="btn-edit" onclick="editFD('${fd.id}')">✏️ Edit</button>
+          <button class="btn-danger" onclick="deleteFD('${fd.id}')">🗑 Del</button>
+        </td>`;
+      body.appendChild(tr);
+    });
+
+    updateSummary(results);
+    updateLastUpdated();
+  }
+
+  function updateSummary(results) {
+    const totInvested = results.reduce((s, r) => s + parseFloat(r.fd.principal), 0);
+    const totCurrent  = results.reduce((s, r) => s + r.calc.currentValue, 0);
+    const totInterest = results.reduce((s, r) => s + r.calc.interestEarned, 0);
+    const totMaturity = results.reduce((s, r) => s + r.calc.maturityValue, 0);
+    const active      = results.filter(r => r.status === 'Active' || r.status === 'Upcoming').length;
+    const matured     = results.filter(r => r.status === 'Matured').length;
+
+    document.getElementById('sumInvested').textContent = fmt(totInvested);
+    document.getElementById('sumCurrent').textContent  = fmt(totCurrent);
+    document.getElementById('sumInterest').textContent = fmt(totInterest);
+    document.getElementById('sumMaturity').textContent = fmt(totMaturity);
+    document.getElementById('countActive').textContent = active;
+    document.getElementById('countMatured').textContent = matured;
+  }
+
+  function updateLastUpdated() {
+    document.getElementById('lastUpdated').textContent =
+      'Last updated: ' + new Date().toLocaleTimeString('en-IN');
+  }
+
+  function esc(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ─── Save ────────────────────────────────────────────────────────────────────
+  function saveFD() {
+    const bank       = document.getElementById('fBank').value.trim();
+    const fdNum      = document.getElementById('fFDNum').value.trim();
+    const principal  = document.getElementById('fPrincipal').value;
+    const rate       = document.getElementById('fRate').value;
+    const startDate  = document.getElementById('fStart').value;
+    const matDate    = document.getElementById('fMaturity').value;
+    const comp       = document.getElementById('fComp').value;
+    const notes      = document.getElementById('fNotes').value.trim();
+
+    if (!bank || !principal || !rate || !startDate || !matDate) {
+      showToast('⚠️ Please fill in all required fields.'); return;
+    }
+    if (new Date(matDate) <= new Date(startDate)) {
+      showToast('⚠️ Maturity date must be after start date.'); return;
+    }
+
+    if (editId) {
+      const idx = fds.findIndex(f => f.id === editId);
+      if (idx !== -1) {
+        fds[idx] = { ...fds[idx], bank, fdNum, principal, rate, startDate, maturityDate: matDate, compounding: comp, notes };
+        showToast('✅ FD updated successfully!');
+      }
+      editId = null;
+      document.getElementById('formTitle').textContent = '➕ Add New Fixed Deposit';
+      document.getElementById('cancelBtn').style.display = 'none';
+    } else {
+      fds.push({
+        id: Date.now().toString(),
+        bank, fdNum, principal, rate,
+        startDate, maturityDate: matDate,
+        compounding: comp, notes,
+        createdAt: new Date().toISOString()
+      });
+      showToast('✅ FD added successfully!');
+    }
+
+    save(); clearForm(); render();
+  }
+
+  function editFD(id) {
+    const fd = fds.find(f => f.id === id);
+    if (!fd) return;
+    editId = id;
+    document.getElementById('fBank').value      = fd.bank;
+    document.getElementById('fFDNum').value     = fd.fdNum;
+    document.getElementById('fPrincipal').value = fd.principal;
+    document.getElementById('fRate').value      = fd.rate;
+    document.getElementById('fStart').value     = fd.startDate;
+    document.getElementById('fMaturity').value  = fd.maturityDate;
+    document.getElementById('fComp').value      = fd.compounding;
+    document.getElementById('fNotes').value     = fd.notes || '';
+    document.getElementById('formTitle').textContent = '✏️ Edit Fixed Deposit';
+    document.getElementById('cancelBtn').style.display = 'inline-flex';
+    document.querySelector('.form-wrap').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function deleteFD(id) {
+    if (!confirm('Delete this FD? This cannot be undone.')) return;
+    fds = fds.filter(f => f.id !== id);
+    save(); render();
+    showToast('🗑 FD deleted.');
+  }
+
+  function cancelEdit() {
+    editId = null;
+    clearForm();
+    document.getElementById('formTitle').textContent = '➕ Add New Fixed Deposit';
+    document.getElementById('cancelBtn').style.display = 'none';
+  }
+
+  function clearForm() {
+    ['fBank','fFDNum','fPrincipal','fRate','fMaturity','fNotes'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('fStart').valueAsDate = new Date();
+    document.getElementById('fComp').value = '4';
+  }
+
+  function save() {
+    localStorage.setItem('fd_tracker_v2', JSON.stringify(fds));
+  }
+
+  // ─── Toast ───────────────────────────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  // ─── Live refresh every minute ───────────────────────────────────────────────
+  render();
+  setInterval(render, 60000);
+</script>
+</body>
+</html>
