@@ -816,7 +816,7 @@
         </div>
         <div class="field">
           <label>Principal (₹) *</label>
-          <input type="number" id="fPrincipal" placeholder="1,00,000" min="1" />
+          <input type="text" id="fPrincipal" placeholder="1,00,000" inputmode="numeric" autocomplete="off" />
         </div>
         <div class="field">
           <label>Interest Rate (%) *</label>
@@ -879,7 +879,7 @@
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="field">
           <label>New Principal (₹) *</label>
-          <input type="number" id="rPrincipal" placeholder="Maturity value or custom" min="1" />
+          <input type="text" id="rPrincipal" placeholder="e.g. 1,07,478" inputmode="numeric" autocomplete="off" />
         </div>
         <div class="field">
           <label>New Interest Rate (%) *</label>
@@ -950,7 +950,7 @@
         </div>
         <div class="field">
           <label>Principal (₹) *</label>
-          <input type="number" id="ePrincipal" placeholder="1,00,000" min="1" />
+          <input type="text" id="ePrincipal" placeholder="1,00,000" inputmode="numeric" autocomplete="off" />
         </div>
         <div class="field">
           <label>Interest Rate (%) *</label>
@@ -1294,20 +1294,20 @@ function updateLastUpdated() {
 //  SAVE / EDIT / DELETE
 // ════════════════════════════════════════════════════════════════════════════
 function saveFD() {
-  const bank    = document.getElementById('fBank').value.trim();
-  const fdNum   = document.getElementById('fFDNum').value.trim();
-  const principal = document.getElementById('fPrincipal').value;
-  const rate    = document.getElementById('fRate').value;
-  const start   = document.getElementById('fStart').value;
-  const mat     = document.getElementById('fMaturity').value;
-  const comp    = document.getElementById('fComp').value;
-  const notes   = document.getElementById('fNotes').value.trim();
+  const bank      = document.getElementById('fBank').value.trim();
+  const fdNum     = document.getElementById('fFDNum').value.trim();
+  const principal = getPrincipalValue('fPrincipal');
+  const rate      = document.getElementById('fRate').value;
+  const start     = document.getElementById('fStart').value;
+  const mat       = document.getElementById('fMaturity').value;
+  const comp      = document.getElementById('fComp').value;
+  const notes     = document.getElementById('fNotes').value.trim();
 
-  if (!bank)      { showToast('⚠️ Bank name is required', 'warn'); return; }
-  if (!principal) { showToast('⚠️ Principal amount is required', 'warn'); return; }
-  if (!rate)      { showToast('⚠️ Interest rate is required', 'warn'); return; }
-  if (!start)     { showToast('⚠️ Start date is required', 'warn'); return; }
-  if (!mat)       { showToast('⚠️ Maturity date is required', 'warn'); return; }
+  if (!bank)                            { showToast('⚠️ Bank name is required', 'warn'); return; }
+  if (!principal || isNaN(principal))   { showToast('⚠️ Principal amount is required', 'warn'); return; }
+  if (!rate)                            { showToast('⚠️ Interest rate is required', 'warn'); return; }
+  if (!start)                           { showToast('⚠️ Start date is required', 'warn'); return; }
+  if (!mat)                             { showToast('⚠️ Maturity date is required', 'warn'); return; }
   if (new Date(mat) <= new Date(start)) { showToast('⚠️ Maturity must be after start date', 'warn'); return; }
 
   fds.push({
@@ -1332,7 +1332,7 @@ function editFD(id) {
   // Populate modal fields
   document.getElementById('eFBank').value     = fd.bank;
   document.getElementById('eFDNum').value     = fd.fdNum || '';
-  document.getElementById('ePrincipal').value = fd.principal;
+  setPrincipalValue('ePrincipal', fd.principal);
   document.getElementById('eRate').value      = fd.rate;
   document.getElementById('eStart').value     = fd.startDate;
   document.getElementById('eMaturity').value  = fd.maturityDate;
@@ -1362,18 +1362,18 @@ function saveEditModal() {
 
   const bank      = document.getElementById('eFBank').value.trim();
   const fdNum     = document.getElementById('eFDNum').value.trim();
-  const principal = document.getElementById('ePrincipal').value;
+  const principal = getPrincipalValue('ePrincipal');
   const rate      = document.getElementById('eRate').value;
   const start     = document.getElementById('eStart').value;
   const mat       = document.getElementById('eMaturity').value;
   const comp      = document.getElementById('eComp').value;
   const notes     = document.getElementById('eNotes').value.trim();
 
-  if (!bank)      { showToast('⚠️ Bank name is required', 'warn'); return; }
-  if (!principal) { showToast('⚠️ Principal amount is required', 'warn'); return; }
-  if (!rate)      { showToast('⚠️ Interest rate is required', 'warn'); return; }
-  if (!start)     { showToast('⚠️ Start date is required', 'warn'); return; }
-  if (!mat)       { showToast('⚠️ Maturity date is required', 'warn'); return; }
+  if (!bank)                            { showToast('⚠️ Bank name is required', 'warn'); return; }
+  if (!principal || isNaN(principal))   { showToast('⚠️ Principal amount is required', 'warn'); return; }
+  if (!rate)                            { showToast('⚠️ Interest rate is required', 'warn'); return; }
+  if (!start)                           { showToast('⚠️ Start date is required', 'warn'); return; }
+  if (!mat)                             { showToast('⚠️ Maturity date is required', 'warn'); return; }
   if (new Date(mat) <= new Date(start)) { showToast('⚠️ Maturity must be after start date', 'warn'); return; }
 
   const idx = fds.findIndex(f => f.id === id);
@@ -1436,7 +1436,7 @@ function openRenewal(id) {
     Maturity Value: <strong>${fmt(calc.maturityValue)}</strong><br>
     <span style="font-size:.8rem;opacity:.8">The maturity value has been pre-filled as the new principal. You can change it.</span>`;
 
-  document.getElementById('rPrincipal').value = calc.maturityValue;
+  setPrincipalValue('rPrincipal', calc.maturityValue);
   document.getElementById('rRate').value      = fd.rate;
   document.getElementById('rStart').value     = fd.maturityDate;
   document.getElementById('rMaturity').value  = '';
@@ -1455,7 +1455,7 @@ function confirmRenewal() {
   const oldFD     = fds.find(f => f.id === renewingId);
   if (!oldFD) return;
 
-  const principal = document.getElementById('rPrincipal').value;
+  const principal = getPrincipalValue('rPrincipal');
   const rate      = document.getElementById('rRate').value;
   const start     = document.getElementById('rStart').value;
   const mat       = document.getElementById('rMaturity').value;
@@ -1605,6 +1605,44 @@ document.getElementById('historyModal').addEventListener('click', e => {
 });
 document.getElementById('editModal').addEventListener('click', e => {
   if (e.target === e.currentTarget) closeEditModal();
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  PRINCIPAL INPUT FORMATTING (Indian comma style: 1,00,000)
+// ════════════════════════════════════════════════════════════════════════════
+function formatIndian(n) {
+  // n is a plain number string (digits only)
+  if (!n) return '';
+  const num = parseInt(n, 10);
+  if (isNaN(num)) return n;
+  return num.toLocaleString('en-IN');
+}
+
+function onPrincipalInput(e) {
+  const el       = e.target;
+  const raw      = el.value.replace(/,/g, '').replace(/[^0-9]/g, '');
+  const cursor   = el.selectionStart;
+  const oldLen   = el.value.length;
+  el.value       = formatIndian(raw);
+  // Adjust cursor position after reformatting
+  const newLen   = el.value.length;
+  el.setSelectionRange(cursor + (newLen - oldLen), cursor + (newLen - oldLen));
+}
+
+function setPrincipalValue(id, numericValue) {
+  const el = document.getElementById(id);
+  if (el) el.value = numericValue ? formatIndian(String(Math.round(numericValue))) : '';
+}
+
+function getPrincipalValue(id) {
+  const el = document.getElementById(id);
+  if (!el) return '';
+  return el.value.replace(/,/g, '');
+}
+
+['fPrincipal', 'rPrincipal', 'ePrincipal'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', onPrincipalInput);
 });
 
 // ════════════════════════════════════════════════════════════════════════════
