@@ -1502,10 +1502,26 @@ async function sheetSaveAll() {
   setSyncSpinner(true);
 
   try {
+    // Enrich each FD with its current calculated values before sending
+    const enriched = fds.map(fd => {
+      const calc   = calcFD(fd);
+      const status = getStatus(fd);
+      return {
+        ...fd,
+        daysElapsed:    calc.daysElapsed,
+        totalDays:      calc.totalDays,
+        progress_pct:   calc.progress,
+        currentValue:   calc.currentValue,
+        interestEarned: calc.interestEarned,
+        maturityValue:  calc.maturityValue,
+        status,
+      };
+    });
+
     const res  = await fetch(SCRIPT_URL, {
       method:  'POST',
-      headers: { 'Content-Type': 'text/plain' }, // Apps Script requires text/plain for POST
-      body:    JSON.stringify({ action: 'saveAll', data: fds }),
+      headers: { 'Content-Type': 'text/plain' },
+      body:    JSON.stringify({ action: 'saveAll', data: enriched }),
     });
     const json = await res.json();
     if (json.ok) {
@@ -1542,10 +1558,26 @@ async function pushLocalToSheet() {
   btn.disabled = true;
 
   try {
+    // Enrich with calculated values
+    const enriched = localData.map(fd => {
+      const calc   = calcFD(fd);
+      const status = getStatus(fd);
+      return {
+        ...fd,
+        daysElapsed:    calc.daysElapsed,
+        totalDays:      calc.totalDays,
+        progress_pct:   calc.progress,
+        currentValue:   calc.currentValue,
+        interestEarned: calc.interestEarned,
+        maturityValue:  calc.maturityValue,
+        status,
+      };
+    });
+
     const res  = await fetch(SCRIPT_URL, {
       method:  'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body:    JSON.stringify({ action: 'saveAll', data: localData }),
+      body:    JSON.stringify({ action: 'saveAll', data: enriched }),
     });
     const json = await res.json();
     if (json.ok) {
