@@ -1,645 +1,1498 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fixed Deposit Tracker</title>
+  <title>FD Tracker — Fixed Deposit Manager</title>
   <style>
+    /* ── Tokens ─────────────────────────────────────────────────────────── */
     :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #222636;
-      --border: #2e3347;
-      --accent: #4f8ef7;
-      --accent2: #6ee7b7;
-      --danger: #f87171;
-      --warn: #fbbf24;
-      --text: #e2e8f0;
-      --muted: #7c8db0;
-      --radius: 10px;
+      --bg:          #f4f6fb;
+      --bg2:         #eef1f8;
+      --surface:     #ffffff;
+      --surface2:    #f9fafc;
+      --border:      #e2e8f0;
+      --border2:     #cbd5e1;
+      --text:        #0f172a;
+      --text2:       #475569;
+      --muted:       #94a3b8;
+      --accent:      #2563eb;
+      --accent-lt:   #dbeafe;
+      --green:       #16a34a;
+      --green-lt:    #dcfce7;
+      --yellow:      #d97706;
+      --yellow-lt:   #fef3c7;
+      --red:         #dc2626;
+      --red-lt:      #fee2e2;
+      --purple:      #7c3aed;
+      --purple-lt:   #ede9fe;
+      --shadow:      0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+      --shadow-sm:   0 1px 2px rgba(0,0,0,.06);
+      --radius:      14px;
+      --radius-sm:   8px;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    [data-theme="dark"] {
+      --bg:          #0d1117;
+      --bg2:         #161b22;
+      --surface:     #1c2130;
+      --surface2:    #222840;
+      --border:      #2d3748;
+      --border2:     #3d4f6b;
+      --text:        #e2e8f0;
+      --text2:       #94a3b8;
+      --muted:       #64748b;
+      --accent:      #3b82f6;
+      --accent-lt:   #1e3a5f;
+      --green:       #22c55e;
+      --green-lt:    #14402a;
+      --yellow:      #f59e0b;
+      --yellow-lt:   #3d2f0a;
+      --red:         #f87171;
+      --red-lt:      #3d1515;
+      --purple:      #a78bfa;
+      --purple-lt:   #2e1f5e;
+      --shadow:      0 1px 3px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+      --shadow-sm:   0 1px 2px rgba(0,0,0,.25);
+    }
+
+    /* ── Reset ──────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
       min-height: 100vh;
-      padding: 24px 16px 60px;
+      transition: background .3s, color .3s;
     }
 
-    header {
-      max-width: 1400px;
-      margin: 0 auto 28px;
+    /* ── Top nav ────────────────────────────────────────────────────────── */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      padding: 0 28px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+
+    .topbar-brand .logo {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .theme-toggle {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      transition: background .2s;
+      color: var(--text);
+    }
+
+    .theme-toggle:hover { background: var(--bg2); }
+
+    .last-updated {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    /* ── Page wrapper ───────────────────────────────────────────────────── */
+    .page { max-width: 1400px; margin: 0 auto; padding: 28px 20px 80px; }
+
+    /* ── Dashboard ──────────────────────────────────────────────────────── */
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 20px 16px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      transition: transform .15s, box-shadow .15s;
+    }
+
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--card-accent, var(--accent));
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+
+    .stat-card .stat-icon {
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+
+    .stat-card .stat-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .stat-card .stat-value {
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--card-color, var(--text));
+    }
+
+    .stat-card .stat-sub {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    /* ── Section header ─────────────────────────────────────────────────── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Bank tabs ──────────────────────────────────────────────────────── */
+    .bank-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .bank-tab {
+      padding: 7px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text2);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .bank-tab:hover { border-color: var(--accent); color: var(--accent); }
+
+    .bank-tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* ── Form card ──────────────────────────────────────────────────────── */
+    .form-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+
+    .form-card-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--surface2);
+    }
+
+    .form-card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-card-body { padding: 24px; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+      gap: 16px;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+
+    .field label {
+      font-size: 0.73rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text2);
+    }
+
+    .field input, .field select, .field textarea {
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 0.9rem;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      width: 100%;
+    }
+
+    .field input:focus, .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-lt);
+    }
+
+    .field input::placeholder { color: var(--muted); }
+    .field select option { background: var(--surface); }
+
+    .form-actions {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    /* ── Buttons ────────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 0.84rem;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 9px 18px;
+      transition: opacity .15s, transform .1s, box-shadow .15s;
+      white-space: nowrap;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn:hover  { opacity: 0.88; }
+
+    .btn-primary  { background: var(--accent);  color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,.3); }
+    .btn-success  { background: var(--green);   color: #fff; box-shadow: 0 2px 8px rgba(22,163,74,.3); }
+    .btn-danger   { background: var(--red-lt);  color: var(--red);   border: 1px solid var(--red);   padding: 6px 12px; font-size: 0.78rem; }
+    .btn-warn     { background: var(--yellow-lt); color: var(--yellow); border: 1px solid var(--yellow); padding: 6px 12px; font-size: 0.78rem; }
+    .btn-purple   { background: var(--purple-lt); color: var(--purple); border: 1px solid var(--purple); padding: 6px 12px; font-size: 0.78rem; }
+    .btn-ghost    { background: transparent; color: var(--text2); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { background: var(--bg2); }
+    .btn-sm       { padding: 5px 10px; font-size: 0.76rem; }
+
+    /* ── Bank section ───────────────────────────────────────────────────── */
+    .bank-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .bank-section-header {
+      padding: 16px 20px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 12px;
+      cursor: pointer;
+      user-select: none;
     }
 
-    header h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-    }
+    .bank-section-header:hover { background: var(--bg2); }
 
-    header h1 span { color: var(--accent); }
-
-    .header-meta {
-      font-size: 0.78rem;
-      color: var(--muted);
-    }
-
-    /* Summary cards */
-    .summary {
-      max-width: 1400px;
-      margin: 0 auto 28px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 14px;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px 20px;
-    }
-
-    .card .label {
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .card .value {
-      font-size: 1.4rem;
-      font-weight: 700;
-    }
-
-    .card .value.green  { color: var(--accent2); }
-    .card .value.blue   { color: var(--accent); }
-    .card .value.yellow { color: var(--warn); }
-    .card .value.red    { color: var(--danger); }
-
-    /* Add FD form */
-    .form-wrap {
-      max-width: 1400px;
-      margin: 0 auto 28px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 22px 24px;
-    }
-
-    .form-wrap h2 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 18px;
-      color: var(--text);
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 14px;
-    }
-
-    .field label {
-      display: block;
-      font-size: 0.74rem;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: var(--muted);
-      margin-bottom: 5px;
-    }
-
-    .field input, .field select {
-      width: 100%;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      font-size: 0.9rem;
-      padding: 9px 12px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .field input:focus, .field select:focus {
-      border-color: var(--accent);
-    }
-
-    .field input::placeholder { color: var(--muted); }
-
-    .form-actions {
-      margin-top: 18px;
+    .bank-name-row {
       display: flex;
+      align-items: center;
       gap: 10px;
+    }
+
+    .bank-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      color: #fff;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .bank-title {
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .bank-subtitle {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .bank-stats {
+      display: flex;
+      gap: 20px;
       flex-wrap: wrap;
     }
 
-    button {
-      cursor: pointer;
-      font-size: 0.88rem;
-      font-weight: 600;
-      border: none;
-      border-radius: 6px;
-      padding: 10px 20px;
-      transition: opacity 0.15s, transform 0.1s;
+    .bank-stat {
+      text-align: right;
     }
 
-    button:active { transform: scale(0.97); }
-    button:hover  { opacity: 0.85; }
-
-    .btn-primary  { background: var(--accent);  color: #fff; }
-    .btn-success  { background: var(--accent2); color: #0f1117; }
-    .btn-danger   { background: var(--danger);  color: #fff; padding: 6px 12px; font-size: 0.78rem; }
-    .btn-edit     { background: var(--warn);    color: #0f1117; padding: 6px 12px; font-size: 0.78rem; }
-    .btn-cancel   { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
-
-    /* Table */
-    .table-wrap {
-      max-width: 1400px;
-      margin: 0 auto;
-      overflow-x: auto;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
+    .bank-stat .bs-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
     }
+
+    .bank-stat .bs-val {
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    .collapse-icon {
+      color: var(--muted);
+      font-size: 12px;
+      transition: transform .2s;
+    }
+
+    .bank-section.collapsed .collapse-icon { transform: rotate(-90deg); }
+    .bank-section.collapsed .bank-table-wrap { display: none; }
+
+    /* ── Table ──────────────────────────────────────────────────────────── */
+    .bank-table-wrap { overflow-x: auto; }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.84rem;
-      min-width: 900px;
+      font-size: 0.82rem;
+      min-width: 960px;
     }
 
-    thead tr {
-      background: var(--surface2);
-      border-bottom: 1px solid var(--border);
-    }
+    thead tr { border-bottom: 1px solid var(--border); }
 
     th {
-      padding: 12px 14px;
+      padding: 11px 14px;
       text-align: left;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       text-transform: uppercase;
       letter-spacing: 0.7px;
       color: var(--muted);
+      font-weight: 600;
       white-space: nowrap;
+      background: var(--surface2);
     }
 
     td {
-      padding: 11px 14px;
+      padding: 12px 14px;
       border-bottom: 1px solid var(--border);
-      white-space: nowrap;
+      color: var(--text);
+      vertical-align: middle;
     }
 
     tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: var(--bg); }
 
-    tbody tr:hover { background: var(--surface2); }
+    .td-muted { color: var(--muted); font-size: 0.78rem; }
+    .td-green  { color: var(--green);  font-weight: 700; }
+    .td-blue   { color: var(--accent); font-weight: 700; }
+    .td-bold   { font-weight: 700; }
 
+    /* Renewal chain indicator */
+    .renewal-indicator {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .renewal-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--purple);
+      flex-shrink: 0;
+    }
+
+    /* ── Badges ─────────────────────────────────────────────────────────── */
     .badge {
-      display: inline-block;
-      padding: 3px 9px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
       border-radius: 20px;
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.4px;
+      font-size: 0.71rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
     }
 
-    .badge-active   { background: rgba(79,142,247,0.15);  color: var(--accent); }
-    .badge-matured  { background: rgba(110,231,183,0.15); color: var(--accent2); }
-    .badge-upcoming { background: rgba(251,191,36,0.15);  color: var(--warn); }
+    .badge-active   { background: var(--accent-lt);  color: var(--accent); }
+    .badge-matured  { background: var(--green-lt);   color: var(--green); }
+    .badge-upcoming { background: var(--yellow-lt);  color: var(--yellow); }
+    .badge-renewed  { background: var(--purple-lt);  color: var(--purple); }
 
-    .num-green { color: var(--accent2); }
-    .num-blue  { color: var(--accent); }
-    .num-muted { color: var(--muted); font-size: 0.8rem; }
-
-    .empty-state {
-      text-align: center;
-      padding: 48px 20px;
-      color: var(--muted);
+    /* ── Progress bar ───────────────────────────────────────────────────── */
+    .progress-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 90px;
     }
 
-    .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
-
-    /* Progress bar */
     .progress-bar {
-      background: var(--border);
+      background: var(--bg2);
       border-radius: 4px;
-      height: 5px;
-      width: 100px;
+      height: 6px;
       overflow: hidden;
     }
 
     .progress-fill {
       height: 100%;
       border-radius: 4px;
-      background: var(--accent);
-      transition: width 0.3s;
+      background: linear-gradient(90deg, var(--accent), var(--purple));
+      transition: width .4s;
     }
 
-    .toast {
+    .progress-fill.done { background: var(--green); }
+
+    .progress-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    /* ── Action buttons in table ────────────────────────────────────────── */
+    .actions { display: flex; gap: 5px; flex-wrap: nowrap; }
+
+    /* ── Empty state ────────────────────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 52px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+      opacity: .5;
+    }
+
+    .empty-state p { font-size: 0.9rem; }
+
+    /* ── Modal ──────────────────────────────────────────────────────────── */
+    .modal-backdrop {
       position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px 20px;
-      font-size: 0.85rem;
-      color: var(--text);
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
       opacity: 0;
-      transform: translateY(10px);
-      transition: all 0.3s;
+      pointer-events: none;
+      transition: opacity .2s;
+    }
+
+    .modal-backdrop.open { opacity: 1; pointer-events: all; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      width: 100%;
+      max-width: 560px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(16px) scale(0.97);
+      transition: transform .2s;
+    }
+
+    .modal-backdrop.open .modal { transform: translateY(0) scale(1); }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .modal-close {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      color: var(--muted);
+      transition: background .15s;
+    }
+
+    .modal-close:hover { background: var(--bg2); color: var(--text); }
+
+    .modal-body { padding: 24px; }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .renewal-info-box {
+      background: var(--purple-lt);
+      border: 1px solid var(--purple);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      font-size: 0.83rem;
+      color: var(--purple);
+      line-height: 1.6;
+    }
+
+    .renewal-info-box strong { font-weight: 700; }
+
+    /* ── Renewal history ────────────────────────────────────────────────── */
+    .history-chain {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-top: 6px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      position: relative;
+    }
+
+    .history-item::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 24px;
+      bottom: -8px;
+      width: 2px;
+      background: var(--border);
+    }
+
+    .history-item:last-child::before { display: none; }
+
+    .history-dot {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      background: var(--surface);
+      flex-shrink: 0;
+      margin-top: 2px;
+      z-index: 1;
+    }
+
+    .history-dot.active-dot { background: var(--accent); }
+
+    .history-content { flex: 1; }
+    .history-title { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+    .history-meta  { font-size: 0.75rem; color: var(--muted); }
+
+    /* ── Toast ──────────────────────────────────────────────────────────── */
+    .toast-container {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
       z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
       pointer-events: none;
     }
 
-    .toast.show {
-      opacity: 1;
-      transform: translateY(0);
+    .toast {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow);
+      padding: 12px 18px;
+      font-size: 0.84rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      opacity: 0;
+      transform: translateX(20px);
+      transition: all .3s;
+      max-width: 320px;
     }
 
-    @media (max-width: 600px) {
+    .toast.show { opacity: 1; transform: translateX(0); }
+
+    /* ── Divider ────────────────────────────────────────────────────────── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+    /* ── Responsive ─────────────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .topbar { padding: 0 16px; }
+      .page   { padding: 16px 12px 60px; }
       .form-grid { grid-template-columns: 1fr 1fr; }
-      .card .value { font-size: 1.1rem; }
+      .bank-stats { display: none; }
+      .stat-card .stat-value { font-size: 1.15rem; }
     }
   </style>
 </head>
 <body>
 
-<header>
-  <h1>🏦 Fixed <span>Deposit</span> Tracker</h1>
-  <div class="header-meta" id="lastUpdated"></div>
-</header>
+<!-- ── Top navigation ───────────────────────────────────────────────────── -->
+<nav class="topbar">
+  <div class="topbar-brand">
+    <div class="logo">🏦</div>
+    FD Tracker
+  </div>
+  <div class="topbar-right">
+    <span class="last-updated" id="lastUpdated"></span>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" id="themeBtn">🌙</button>
+  </div>
+</nav>
 
-<!-- Summary Cards -->
-<div class="summary">
-  <div class="card">
-    <div class="label">Total Invested</div>
-    <div class="value blue" id="sumInvested">₹0</div>
+<div class="page">
+
+  <!-- ── Dashboard ────────────────────────────────────────────────────── -->
+  <div class="dashboard" id="dashboard">
+    <div class="stat-card" style="--card-accent:var(--accent);--card-color:var(--accent)">
+      <div class="stat-icon">💰</div>
+      <div class="stat-label">Total Invested</div>
+      <div class="stat-value" id="s-invested">₹0</div>
+      <div class="stat-sub" id="s-banks">0 banks · 0 FDs</div>
+    </div>
+    <div class="stat-card" style="--card-accent:var(--green);--card-color:var(--green)">
+      <div class="stat-icon">📈</div>
+      <div class="stat-label">Current Value</div>
+      <div class="stat-value" id="s-current">₹0</div>
+      <div class="stat-sub" id="s-gain">+₹0 gain</div>
+    </div>
+    <div class="stat-card" style="--card-accent:var(--yellow);--card-color:var(--yellow)">
+      <div class="stat-icon">🏆</div>
+      <div class="stat-label">Interest Earned</div>
+      <div class="stat-value" id="s-interest">₹0</div>
+      <div class="stat-sub" id="s-roi">0.00% ROI</div>
+    </div>
+    <div class="stat-card" style="--card-accent:var(--purple);--card-color:var(--purple)">
+      <div class="stat-icon">🎯</div>
+      <div class="stat-label">Total Maturity Value</div>
+      <div class="stat-value" id="s-maturity">₹0</div>
+      <div class="stat-sub" id="s-future">on full tenure</div>
+    </div>
+    <div class="stat-card" style="--card-accent:var(--green)">
+      <div class="stat-icon">✅</div>
+      <div class="stat-label">Active FDs</div>
+      <div class="stat-value" id="s-active" style="color:var(--green)">0</div>
+      <div class="stat-sub" id="s-upcoming">0 maturing soon</div>
+    </div>
+    <div class="stat-card" style="--card-accent:var(--muted)">
+      <div class="stat-icon">🏁</div>
+      <div class="stat-label">Matured FDs</div>
+      <div class="stat-value" id="s-matured" style="color:var(--muted)">0</div>
+      <div class="stat-sub" id="s-renewed">0 renewed</div>
+    </div>
   </div>
-  <div class="card">
-    <div class="label">Current Value</div>
-    <div class="value green" id="sumCurrent">₹0</div>
+
+  <!-- ── Add / Edit FD Form ────────────────────────────────────────────── -->
+  <div class="form-card" id="fdForm">
+    <div class="form-card-header">
+      <div class="form-card-title" id="formTitle">
+        <span>➕</span> Add New Fixed Deposit
+      </div>
+      <button class="btn btn-ghost btn-sm" id="cancelBtn" onclick="cancelEdit()" style="display:none">
+        ✕ Cancel
+      </button>
+    </div>
+    <div class="form-card-body">
+      <div class="form-grid">
+        <div class="field">
+          <label>Bank Name *</label>
+          <input type="text" id="fBank" placeholder="e.g. SBI, HDFC, ICICI" list="bankSuggestions" />
+          <datalist id="bankSuggestions"></datalist>
+        </div>
+        <div class="field">
+          <label>FD / Account Number</label>
+          <input type="text" id="fFDNum" placeholder="e.g. FD-2024-001" />
+        </div>
+        <div class="field">
+          <label>Principal (₹) *</label>
+          <input type="number" id="fPrincipal" placeholder="1,00,000" min="1" />
+        </div>
+        <div class="field">
+          <label>Interest Rate (%) *</label>
+          <input type="number" id="fRate" placeholder="7.50" step="0.01" min="0.01" />
+        </div>
+        <div class="field">
+          <label>Start Date *</label>
+          <input type="date" id="fStart" />
+        </div>
+        <div class="field">
+          <label>Maturity Date *</label>
+          <input type="date" id="fMaturity" />
+        </div>
+        <div class="field">
+          <label>Compounding Frequency</label>
+          <select id="fComp">
+            <option value="1">Annually (1×/yr)</option>
+            <option value="2">Half-Yearly (2×/yr)</option>
+            <option value="4" selected>Quarterly (4×/yr)</option>
+            <option value="12">Monthly (12×/yr)</option>
+            <option value="365">Daily (365×/yr)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Notes</label>
+          <input type="text" id="fNotes" placeholder="e.g. Senior citizen rate" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveFD()">💾 Save FD</button>
+        <button class="btn btn-ghost" id="cancelBtn2" onclick="cancelEdit()" style="display:none">Cancel</button>
+      </div>
+    </div>
   </div>
-  <div class="card">
-    <div class="label">Interest Earned</div>
-    <div class="value yellow" id="sumInterest">₹0</div>
+
+  <!-- ── Bank-wise FD sections ─────────────────────────────────────────── -->
+  <div class="section-header">
+    <div class="section-title">🏦 Your Fixed Deposits</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap" id="bankFilterRow"></div>
   </div>
-  <div class="card">
-    <div class="label">Total Maturity Value</div>
-    <div class="value green" id="sumMaturity">₹0</div>
+
+  <div id="fdContainer">
+    <div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <p>No FDs yet. Add your first Fixed Deposit above.</p>
+    </div>
   </div>
-  <div class="card">
-    <div class="label">Active FDs</div>
-    <div class="value blue" id="countActive">0</div>
-  </div>
-  <div class="card">
-    <div class="label">Matured FDs</div>
-    <div class="value" id="countMatured">0</div>
+
+</div><!-- /page -->
+
+<!-- ── Renewal Modal ─────────────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="renewalModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🔄 Renew Fixed Deposit</div>
+      <button class="modal-close" onclick="closeRenewalModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="renewal-info-box" id="renewalInfo"></div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="field">
+          <label>New Principal (₹) *</label>
+          <input type="number" id="rPrincipal" placeholder="Maturity value or custom" min="1" />
+        </div>
+        <div class="field">
+          <label>New Interest Rate (%) *</label>
+          <input type="number" id="rRate" step="0.01" min="0.01" placeholder="7.50" />
+        </div>
+        <div class="field">
+          <label>New Start Date *</label>
+          <input type="date" id="rStart" />
+        </div>
+        <div class="field">
+          <label>New Maturity Date *</label>
+          <input type="date" id="rMaturity" />
+        </div>
+        <div class="field">
+          <label>Compounding Frequency</label>
+          <select id="rComp">
+            <option value="1">Annually</option>
+            <option value="2">Half-Yearly</option>
+            <option value="4" selected>Quarterly</option>
+            <option value="12">Monthly</option>
+            <option value="365">Daily</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Notes</label>
+          <input type="text" id="rNotes" placeholder="e.g. Auto-renewed" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeRenewalModal()">Cancel</button>
+      <button class="btn btn-success" onclick="confirmRenewal()">🔄 Confirm Renewal</button>
+    </div>
   </div>
 </div>
 
-<!-- Add / Edit Form -->
-<div class="form-wrap">
-  <h2 id="formTitle">➕ Add New Fixed Deposit</h2>
-  <div class="form-grid">
-    <div class="field">
-      <label>Bank Name</label>
-      <input type="text" id="fBank" placeholder="e.g. SBI, HDFC" />
+<!-- ── History Modal ──────────────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="historyModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📜 Renewal History</div>
+      <button class="modal-close" onclick="closeHistoryModal()">✕</button>
     </div>
-    <div class="field">
-      <label>FD Number</label>
-      <input type="text" id="fFDNum" placeholder="e.g. FD-001" />
+    <div class="modal-body" id="historyBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeHistoryModal()">Close</button>
     </div>
-    <div class="field">
-      <label>Principal (₹)</label>
-      <input type="number" id="fPrincipal" placeholder="50000" min="1" />
-    </div>
-    <div class="field">
-      <label>Interest Rate (%)</label>
-      <input type="number" id="fRate" placeholder="7.5" step="0.01" min="0.01" />
-    </div>
-    <div class="field">
-      <label>Start Date</label>
-      <input type="date" id="fStart" />
-    </div>
-    <div class="field">
-      <label>Maturity Date</label>
-      <input type="date" id="fMaturity" />
-    </div>
-    <div class="field">
-      <label>Compounding / Year</label>
-      <select id="fComp">
-        <option value="1">Annually (1x)</option>
-        <option value="2">Half-yearly (2x)</option>
-        <option value="4" selected>Quarterly (4x)</option>
-        <option value="12">Monthly (12x)</option>
-        <option value="365">Daily (365x)</option>
-      </select>
-    </div>
-    <div class="field">
-      <label>Notes (optional)</label>
-      <input type="text" id="fNotes" placeholder="e.g. Senior citizen rate" />
-    </div>
-  </div>
-  <div class="form-actions">
-    <button class="btn-primary" onclick="saveFD()">💾 Save FD</button>
-    <button class="btn-cancel" id="cancelBtn" onclick="cancelEdit()" style="display:none">Cancel</button>
   </div>
 </div>
 
-<!-- Table -->
-<div class="table-wrap">
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Bank</th>
-        <th>FD Number</th>
-        <th>Principal (₹)</th>
-        <th>Rate (%)</th>
-        <th>Start Date</th>
-        <th>Maturity Date</th>
-        <th>Comp/Yr</th>
-        <th>Days Elapsed</th>
-        <th>Progress</th>
-        <th>Current Value (₹)</th>
-        <th>Interest Earned (₹)</th>
-        <th>Maturity Value (₹)</th>
-        <th>Status</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody id="fdBody">
-      <tr id="emptyRow">
-        <td colspan="15">
-          <div class="empty-state">
-            <div class="icon">📋</div>
-            <div>No FDs added yet. Add your first Fixed Deposit above.</div>
-          </div>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<div class="toast" id="toast"></div>
+<!-- ── Toast container ───────────────────────────────────────────────────── -->
+<div class="toast-container" id="toastContainer"></div>
 
 <script>
-  // ─── Data ────────────────────────────────────────────────────────────────────
-  let fds = JSON.parse(localStorage.getItem('fd_tracker_v2') || '[]');
-  let editId = null;
+// ════════════════════════════════════════════════════════════════════════════
+//  DATA
+// ════════════════════════════════════════════════════════════════════════════
+let fds    = JSON.parse(localStorage.getItem('fd_tracker_v3') || '[]');
+let editId = null;
+let renewingId = null;
+let activeFilter = 'all';
 
-  // Set default start date to today
-  document.getElementById('fStart').valueAsDate = new Date();
+// Migrate from v2
+const oldData = localStorage.getItem('fd_tracker_v2');
+if (oldData && fds.length === 0) {
+  try {
+    const old = JSON.parse(oldData);
+    fds = old.map(fd => ({ ...fd, renewedFromId: null, renewedToId: null }));
+    save();
+  } catch(e) {}
+}
 
-  // ─── Calculations ────────────────────────────────────────────────────────────
-  function calcFD(fd, asOfDate) {
-    const start    = new Date(fd.startDate);
-    const maturity = new Date(fd.maturityDate);
-    const now      = asOfDate || new Date();
-    const P        = parseFloat(fd.principal);
-    const r        = parseFloat(fd.rate) / 100;
-    const n        = parseInt(fd.compounding);
+// ════════════════════════════════════════════════════════════════════════════
+//  CALCULATIONS
+// ════════════════════════════════════════════════════════════════════════════
+function calcFD(fd, asOf) {
+  const P        = parseFloat(fd.principal);
+  const r        = parseFloat(fd.rate) / 100;
+  const n        = parseInt(fd.compounding);
+  const start    = new Date(fd.startDate);
+  const maturity = new Date(fd.maturityDate);
+  const now      = asOf ? new Date(asOf) : new Date();
 
-    // Total tenure in years
-    const totalDays   = Math.max((maturity - start) / 86400000, 1);
-    const totalYears  = totalDays / 365;
+  const totalDays    = Math.max((maturity - start) / 86400000, 1);
+  const totalYears   = totalDays / 365;
+  const maturityVal  = P * Math.pow(1 + r / n, n * totalYears);
 
-    // Maturity value (full tenure)
-    const maturityValue = P * Math.pow(1 + r / n, n * totalYears);
+  const effectiveNow = now > maturity ? maturity : now < start ? start : now;
+  const daysElapsed  = Math.max(Math.floor((effectiveNow - start) / 86400000), 0);
+  const yearsElapsed = daysElapsed / 365;
+  const currentVal   = P * Math.pow(1 + r / n, n * yearsElapsed);
 
-    // Days elapsed (capped at maturity)
-    const effectiveNow = now > maturity ? maturity : now;
-    const daysElapsed  = Math.max(Math.floor((effectiveNow - start) / 86400000), 0);
-    const yearsElapsed = daysElapsed / 365;
+  return {
+    totalDays,
+    daysElapsed,
+    currentValue:    round2(currentVal),
+    interestEarned:  round2(currentVal - P),
+    maturityValue:   round2(maturityVal),
+    progress:        Math.min(100, Math.round((daysElapsed / totalDays) * 100)),
+  };
+}
 
-    // Current value
-    const currentValue = P * Math.pow(1 + r / n, n * yearsElapsed);
+function getStatus(fd) {
+  const now = new Date();
+  if (fd.renewedToId) return 'Renewed';
+  if (now >= new Date(fd.maturityDate)) return 'Matured';
+  const daysLeft = Math.ceil((new Date(fd.maturityDate) - now) / 86400000);
+  if (daysLeft <= 30) return 'Upcoming';
+  return 'Active';
+}
 
-    return {
-      totalDays,
-      daysElapsed,
-      currentValue: Math.round(currentValue * 100) / 100,
-      interestEarned: Math.round((currentValue - P) * 100) / 100,
-      maturityValue: Math.round(maturityValue * 100) / 100,
-    };
+function round2(n) { return Math.round(n * 100) / 100; }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  FORMATTING
+// ════════════════════════════════════════════════════════════════════════════
+function fmt(n) {
+  return '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtShort(n) {
+  if (n >= 1e7) return '₹' + (n / 1e7).toFixed(2) + ' Cr';
+  if (n >= 1e5) return '₹' + (n / 1e5).toFixed(2) + ' L';
+  return fmt(n);
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function compLabel(n) {
+  return { 1:'Annual', 2:'Half-Yr', 4:'Quarterly', 12:'Monthly', 365:'Daily' }[n] || n + 'x';
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function bankInitial(name) {
+  return String(name||'?').trim()[0].toUpperCase();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════════════════════════════
+function render() {
+  renderDashboard();
+  renderBankSections();
+  renderBankSuggestions();
+  updateLastUpdated();
+}
+
+function renderDashboard() {
+  const allCalcs = fds.map(fd => ({ fd, calc: calcFD(fd), status: getStatus(fd) }));
+  const totInvested = allCalcs.reduce((s, x) => s + parseFloat(x.fd.principal), 0);
+  const totCurrent  = allCalcs.reduce((s, x) => s + x.calc.currentValue, 0);
+  const totInterest = allCalcs.reduce((s, x) => s + x.calc.interestEarned, 0);
+  const totMaturity = allCalcs.reduce((s, x) => s + x.calc.maturityValue, 0);
+  const active   = allCalcs.filter(x => x.status === 'Active').length;
+  const upcoming = allCalcs.filter(x => x.status === 'Upcoming').length;
+  const matured  = allCalcs.filter(x => x.status === 'Matured').length;
+  const renewed  = allCalcs.filter(x => x.status === 'Renewed').length;
+  const banks    = [...new Set(fds.map(f => f.bank.trim()))].length;
+
+  const roi = totInvested > 0 ? ((totInterest / totInvested) * 100).toFixed(2) : '0.00';
+
+  set('s-invested', fmtShort(totInvested));
+  set('s-banks',    `${banks} bank${banks!==1?'s':''} · ${fds.length} FD${fds.length!==1?'s':''}`);
+  set('s-current',  fmtShort(totCurrent));
+  set('s-gain',     `+${fmtShort(totInterest)} gain`);
+  set('s-interest', fmtShort(totInterest));
+  set('s-roi',      `${roi}% ROI so far`);
+  set('s-maturity', fmtShort(totMaturity));
+  set('s-future',   `+${fmtShort(round2(totMaturity - totInvested))} total gain`);
+  set('s-active',   active + (upcoming ? ` (+${upcoming})` : ''));
+  set('s-upcoming', `${upcoming} maturing ≤30 days`);
+  set('s-matured',  matured);
+  set('s-renewed',  `${renewed} renewed`);
+}
+
+function renderBankSections() {
+  const container = document.getElementById('fdContainer');
+
+  if (fds.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <p>No FDs yet. Add your first Fixed Deposit above.</p>
+    </div>`;
+    renderFilterTabs([]);
+    return;
   }
 
-  function getStatus(fd) {
-    const now      = new Date();
-    const maturity = new Date(fd.maturityDate);
-    const start    = new Date(fd.startDate);
-    if (now >= maturity) return 'Matured';
-    const daysLeft = Math.ceil((maturity - now) / 86400000);
-    if (daysLeft <= 30) return 'Upcoming';
-    return 'Active';
-  }
+  // Group by bank
+  const bankMap = {};
+  fds.forEach(fd => {
+    const key = fd.bank.trim();
+    if (!bankMap[key]) bankMap[key] = [];
+    bankMap[key].push(fd);
+  });
 
-  // ─── Formatting ──────────────────────────────────────────────────────────────
-  function fmt(n) {
-    return '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
+  const banks = Object.keys(bankMap).sort();
+  renderFilterTabs(banks);
 
-  function fmtDate(d) {
-    if (!d) return '—';
-    return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  }
+  const filtered = activeFilter === 'all' ? banks : banks.filter(b => b === activeFilter);
 
-  function compLabel(n) {
-    const map = { 1: '1 (Annual)', 2: '2 (Half-yr)', 4: '4 (Quarterly)', 12: '12 (Monthly)', 365: '365 (Daily)' };
-    return map[n] || n;
-  }
+  container.innerHTML = '';
+  filtered.forEach(bank => {
+    const bankFDs = bankMap[bank];
+    const calcs   = bankFDs.map(fd => ({ fd, calc: calcFD(fd), status: getStatus(fd) }));
+    const totInv  = bankFDs.reduce((s, f) => s + parseFloat(f.principal), 0);
+    const totCur  = calcs.reduce((s, x) => s + x.calc.currentValue, 0);
+    const totMat  = calcs.reduce((s, x) => s + x.calc.maturityValue, 0);
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
-  function render() {
-    const body = document.getElementById('fdBody');
-    body.innerHTML = '';
+    const sectionId = 'bank-' + bank.replace(/[^a-z0-9]/gi, '-');
+    const isCollapsed = sessionStorage.getItem('collapsed-' + sectionId) === '1';
 
-    if (fds.length === 0) {
-      body.innerHTML = `
-        <tr id="emptyRow"><td colspan="15">
-          <div class="empty-state">
-            <div class="icon">📋</div>
-            <div>No FDs added yet. Add your first Fixed Deposit above.</div>
+    const section = document.createElement('div');
+    section.className = 'bank-section' + (isCollapsed ? ' collapsed' : '');
+    section.id = sectionId;
+
+    section.innerHTML = `
+      <div class="bank-section-header" onclick="toggleCollapse('${sectionId}')">
+        <div class="bank-name-row">
+          <div class="bank-icon">${esc(bankInitial(bank))}</div>
+          <div>
+            <div class="bank-title">${esc(bank)}</div>
+            <div class="bank-subtitle">${bankFDs.length} FD${bankFDs.length!==1?'s':''}</div>
           </div>
-        </td></tr>`;
-      updateSummary([]);
-      return;
-    }
-
-    let results = [];
-    fds.forEach((fd, i) => {
-      const calc   = calcFD(fd);
-      const status = getStatus(fd);
-      const pct    = Math.min(100, Math.round((calc.daysElapsed / calc.totalDays) * 100));
-      results.push({ fd, calc, status });
-
-      const badgeClass = status === 'Matured' ? 'badge-matured'
-                       : status === 'Upcoming' ? 'badge-upcoming'
-                       : 'badge-active';
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="num-muted">${i + 1}</td>
-        <td><strong>${esc(fd.bank)}</strong></td>
-        <td class="num-muted">${esc(fd.fdNum)}</td>
-        <td>${fmt(fd.principal)}</td>
-        <td>${parseFloat(fd.rate).toFixed(2)}%</td>
-        <td>${fmtDate(fd.startDate)}</td>
-        <td>${fmtDate(fd.maturityDate)}</td>
-        <td class="num-muted">${compLabel(fd.compounding)}</td>
-        <td>${calc.daysElapsed.toLocaleString()} days</td>
-        <td>
-          <div class="progress-bar">
-            <div class="progress-fill" style="width:${pct}%"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div class="bank-stats">
+            <div class="bank-stat">
+              <div class="bs-label">Invested</div>
+              <div class="bs-val" style="color:var(--accent)">${fmtShort(totInv)}</div>
+            </div>
+            <div class="bank-stat">
+              <div class="bs-label">Current</div>
+              <div class="bs-val" style="color:var(--green)">${fmtShort(totCur)}</div>
+            </div>
+            <div class="bank-stat">
+              <div class="bs-label">At Maturity</div>
+              <div class="bs-val" style="color:var(--purple)">${fmtShort(totMat)}</div>
+            </div>
           </div>
-          <div class="num-muted" style="margin-top:3px;font-size:0.72rem">${pct}%</div>
-        </td>
-        <td class="num-green"><strong>${fmt(calc.currentValue)}</strong></td>
-        <td class="num-blue">${fmt(calc.interestEarned)}</td>
-        <td><strong>${fmt(calc.maturityValue)}</strong></td>
-        <td><span class="badge ${badgeClass}">${status}</span></td>
-        <td>
-          <button class="btn-edit" onclick="editFD('${fd.id}')">✏️ Edit</button>
-          <button class="btn-danger" onclick="deleteFD('${fd.id}')">🗑 Del</button>
-        </td>`;
-      body.appendChild(tr);
-    });
+          <span class="collapse-icon">▼</span>
+        </div>
+      </div>
+      <div class="bank-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>FD Number</th>
+              <th>Principal (₹)</th>
+              <th>Rate</th>
+              <th>Start Date</th>
+              <th>Maturity Date</th>
+              <th>Comp/Yr</th>
+              <th>Days Elapsed</th>
+              <th>Progress</th>
+              <th>Current Value (₹)</th>
+              <th>Interest Earned (₹)</th>
+              <th>Maturity Value (₹)</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${calcs.map((x, i) => rowHTML(x.fd, x.calc, x.status, i + 1)).join('')}</tbody>
+        </table>
+      </div>`;
+    container.appendChild(section);
+  });
+}
 
-    updateSummary(results);
-    updateLastUpdated();
+function rowHTML(fd, calc, status, idx) {
+  const badgeClass = {
+    Active: 'badge-active', Matured: 'badge-matured',
+    Upcoming: 'badge-upcoming', Renewed: 'badge-renewed'
+  }[status] || 'badge-active';
+
+  const pct = calc.progress;
+  const isDone = status === 'Matured' || status === 'Renewed';
+  const hasHistory = fd.renewedFromId || fd.renewedToId;
+
+  const renewalDot = hasHistory
+    ? `<span title="Part of renewal chain" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--purple);margin-left:4px;vertical-align:middle"></span>`
+    : '';
+
+  const actionBtns = [
+    `<button class="btn btn-warn btn-sm" onclick="editFD('${fd.id}')">✏️</button>`,
+    `<button class="btn btn-danger btn-sm" onclick="deleteFD('${fd.id}')">🗑</button>`,
+  ];
+
+  if (status === 'Matured') {
+    actionBtns.push(`<button class="btn btn-purple btn-sm" onclick="openRenewal('${fd.id}')">🔄 Renew</button>`);
   }
 
-  function updateSummary(results) {
-    const totInvested = results.reduce((s, r) => s + parseFloat(r.fd.principal), 0);
-    const totCurrent  = results.reduce((s, r) => s + r.calc.currentValue, 0);
-    const totInterest = results.reduce((s, r) => s + r.calc.interestEarned, 0);
-    const totMaturity = results.reduce((s, r) => s + r.calc.maturityValue, 0);
-    const active      = results.filter(r => r.status === 'Active' || r.status === 'Upcoming').length;
-    const matured     = results.filter(r => r.status === 'Matured').length;
-
-    document.getElementById('sumInvested').textContent = fmt(totInvested);
-    document.getElementById('sumCurrent').textContent  = fmt(totCurrent);
-    document.getElementById('sumInterest').textContent = fmt(totInterest);
-    document.getElementById('sumMaturity').textContent = fmt(totMaturity);
-    document.getElementById('countActive').textContent = active;
-    document.getElementById('countMatured').textContent = matured;
+  if (hasHistory) {
+    actionBtns.push(`<button class="btn btn-ghost btn-sm" onclick="openHistory('${fd.id}')">📜</button>`);
   }
 
-  function updateLastUpdated() {
-    document.getElementById('lastUpdated').textContent =
-      'Last updated: ' + new Date().toLocaleTimeString('en-IN');
-  }
+  return `<tr>
+    <td class="td-muted">${idx}</td>
+    <td><span class="td-bold">${esc(fd.fdNum || '—')}</span>${renewalDot}</td>
+    <td class="td-blue">${fmt(fd.principal)}</td>
+    <td class="td-bold">${parseFloat(fd.rate).toFixed(2)}%</td>
+    <td class="td-muted">${fmtDate(fd.startDate)}</td>
+    <td class="td-muted">${fmtDate(fd.maturityDate)}</td>
+    <td class="td-muted">${compLabel(fd.compounding)}</td>
+    <td class="td-muted">${calc.daysElapsed.toLocaleString('en-IN')} days</td>
+    <td>
+      <div class="progress-wrap">
+        <div class="progress-bar">
+          <div class="progress-fill ${isDone?'done':''}" style="width:${pct}%"></div>
+        </div>
+        <div class="progress-label">${pct}%</div>
+      </div>
+    </td>
+    <td class="td-green">${fmt(calc.currentValue)}</td>
+    <td style="color:var(--yellow);font-weight:600">${fmt(calc.interestEarned)}</td>
+    <td class="td-bold">${fmt(calc.maturityValue)}</td>
+    <td><span class="badge ${badgeClass}">${status}</span></td>
+    <td><div class="actions">${actionBtns.join('')}</div></td>
+  </tr>`;
+}
 
-  function esc(str) {
-    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
+function renderFilterTabs(banks) {
+  const row = document.getElementById('bankFilterRow');
+  if (banks.length <= 1) { row.innerHTML = ''; return; }
 
-  // ─── Save ────────────────────────────────────────────────────────────────────
-  function saveFD() {
-    const bank       = document.getElementById('fBank').value.trim();
-    const fdNum      = document.getElementById('fFDNum').value.trim();
-    const principal  = document.getElementById('fPrincipal').value;
-    const rate       = document.getElementById('fRate').value;
-    const startDate  = document.getElementById('fStart').value;
-    const matDate    = document.getElementById('fMaturity').value;
-    const comp       = document.getElementById('fComp').value;
-    const notes      = document.getElementById('fNotes').value.trim();
+  const tabs = [{ key: 'all', label: 'All Banks' }, ...banks.map(b => ({ key: b, label: b }))];
+  row.innerHTML = tabs.map(t =>
+    `<button class="bank-tab ${activeFilter === t.key ? 'active' : ''}" onclick="setFilter('${esc(t.key)}')">${esc(t.label)}</button>`
+  ).join('');
+}
 
-    if (!bank || !principal || !rate || !startDate || !matDate) {
-      showToast('⚠️ Please fill in all required fields.'); return;
+function renderBankSuggestions() {
+  const dl = document.getElementById('bankSuggestions');
+  const banks = [...new Set(fds.map(f => f.bank.trim()))].sort();
+  dl.innerHTML = banks.map(b => `<option value="${esc(b)}">`).join('');
+}
+
+function set(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function updateLastUpdated() {
+  const el = document.getElementById('lastUpdated');
+  if (el) el.textContent = 'Updated ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  SAVE / EDIT / DELETE
+// ════════════════════════════════════════════════════════════════════════════
+function saveFD() {
+  const bank    = document.getElementById('fBank').value.trim();
+  const fdNum   = document.getElementById('fFDNum').value.trim();
+  const principal = document.getElementById('fPrincipal').value;
+  const rate    = document.getElementById('fRate').value;
+  const start   = document.getElementById('fStart').value;
+  const mat     = document.getElementById('fMaturity').value;
+  const comp    = document.getElementById('fComp').value;
+  const notes   = document.getElementById('fNotes').value.trim();
+
+  if (!bank)      { showToast('⚠️ Bank name is required', 'warn'); return; }
+  if (!principal) { showToast('⚠️ Principal amount is required', 'warn'); return; }
+  if (!rate)      { showToast('⚠️ Interest rate is required', 'warn'); return; }
+  if (!start)     { showToast('⚠️ Start date is required', 'warn'); return; }
+  if (!mat)       { showToast('⚠️ Maturity date is required', 'warn'); return; }
+  if (new Date(mat) <= new Date(start)) { showToast('⚠️ Maturity must be after start date', 'warn'); return; }
+
+  if (editId) {
+    const idx = fds.findIndex(f => f.id === editId);
+    if (idx !== -1) {
+      fds[idx] = { ...fds[idx], bank, fdNum, principal, rate, startDate: start, maturityDate: mat, compounding: comp, notes };
+      showToast('✅ FD updated successfully');
     }
-    if (new Date(matDate) <= new Date(startDate)) {
-      showToast('⚠️ Maturity date must be after start date.'); return;
-    }
-
-    if (editId) {
-      const idx = fds.findIndex(f => f.id === editId);
-      if (idx !== -1) {
-        fds[idx] = { ...fds[idx], bank, fdNum, principal, rate, startDate, maturityDate: matDate, compounding: comp, notes };
-        showToast('✅ FD updated successfully!');
-      }
-      editId = null;
-      document.getElementById('formTitle').textContent = '➕ Add New Fixed Deposit';
-      document.getElementById('cancelBtn').style.display = 'none';
-    } else {
-      fds.push({
-        id: Date.now().toString(),
-        bank, fdNum, principal, rate,
-        startDate, maturityDate: matDate,
-        compounding: comp, notes,
-        createdAt: new Date().toISOString()
-      });
-      showToast('✅ FD added successfully!');
-    }
-
-    save(); clearForm(); render();
-  }
-
-  function editFD(id) {
-    const fd = fds.find(f => f.id === id);
-    if (!fd) return;
-    editId = id;
-    document.getElementById('fBank').value      = fd.bank;
-    document.getElementById('fFDNum').value     = fd.fdNum;
-    document.getElementById('fPrincipal').value = fd.principal;
-    document.getElementById('fRate').value      = fd.rate;
-    document.getElementById('fStart').value     = fd.startDate;
-    document.getElementById('fMaturity').value  = fd.maturityDate;
-    document.getElementById('fComp').value      = fd.compounding;
-    document.getElementById('fNotes').value     = fd.notes || '';
-    document.getElementById('formTitle').textContent = '✏️ Edit Fixed Deposit';
-    document.getElementById('cancelBtn').style.display = 'inline-flex';
-    document.querySelector('.form-wrap').scrollIntoView({ behavior: 'smooth' });
-  }
-
-  function deleteFD(id) {
-    if (!confirm('Delete this FD? This cannot be undone.')) return;
-    fds = fds.filter(f => f.id !== id);
-    save(); render();
-    showToast('🗑 FD deleted.');
-  }
-
-  function cancelEdit() {
     editId = null;
-    clearForm();
-    document.getElementById('formTitle').textContent = '➕ Add New Fixed Deposit';
-    document.getElementById('cancelBtn').style.display = 'none';
-  }
-
-  function clearForm() {
-    ['fBank','fFDNum','fPrincipal','fRate','fMaturity','fNotes'].forEach(id => {
-      document.getElementById(id).value = '';
+    setFormMode('add');
+  } else {
+    fds.push({
+      id: Date.now().toString(),
+      bank, fdNum, principal, rate,
+      startDate: start, maturityDate: mat,
+      compounding: comp, notes,
+      renewedFromId: null, renewedToId: null,
+      createdAt: new Date().toISOString(),
     });
-    document.getElementById('fStart').valueAsDate = new Date();
-    document.getElementById('fComp').value = '4';
+    showToast('✅ FD added successfully');
+  }
+  save(); clearForm(); render();
+}
+
+function editFD(id) {
+  const fd = fds.find(f => f.id === id);
+  if (!fd) return;
+  editId = id;
+  document.getElementById('fBank').value      = fd.bank;
+  document.getElementById('fFDNum').value     = fd.fdNum || '';
+  document.getElementById('fPrincipal').value = fd.principal;
+  document.getElementById('fRate').value      = fd.rate;
+  document.getElementById('fStart').value     = fd.startDate;
+  document.getElementById('fMaturity').value  = fd.maturityDate;
+  document.getElementById('fComp').value      = fd.compounding;
+  document.getElementById('fNotes').value     = fd.notes || '';
+  setFormMode('edit');
+  document.getElementById('fdForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function deleteFD(id) {
+  const fd = fds.find(f => f.id === id);
+  if (!fd) return;
+  if (!confirm(`Delete this FD from ${fd.bank}? This cannot be undone.`)) return;
+  fds = fds.filter(f => f.id !== id);
+  save(); render();
+  showToast('🗑️ FD deleted');
+}
+
+function cancelEdit() {
+  editId = null;
+  clearForm();
+  setFormMode('add');
+}
+
+function setFormMode(mode) {
+  const isEdit = mode === 'edit';
+  document.getElementById('formTitle').innerHTML = isEdit
+    ? '<span>✏️</span> Edit Fixed Deposit'
+    : '<span>➕</span> Add New Fixed Deposit';
+  document.getElementById('cancelBtn').style.display  = isEdit ? '' : 'none';
+  document.getElementById('cancelBtn2').style.display = isEdit ? '' : 'none';
+}
+
+function clearForm() {
+  ['fBank','fFDNum','fPrincipal','fRate','fMaturity','fNotes'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('fStart').valueAsDate = new Date();
+  document.getElementById('fComp').value = '4';
+}
+
+function save() {
+  localStorage.setItem('fd_tracker_v3', JSON.stringify(fds));
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  RENEWAL
+// ════════════════════════════════════════════════════════════════════════════
+function openRenewal(id) {
+  const fd = fds.find(f => f.id === id);
+  if (!fd) return;
+  renewingId = id;
+
+  const calc = calcFD(fd);
+
+  document.getElementById('renewalInfo').innerHTML = `
+    <strong>Renewing:</strong> ${esc(fd.bank)} — ${esc(fd.fdNum || 'FD')}<br>
+    Principal: <strong>${fmt(fd.principal)}</strong> &nbsp;|&nbsp;
+    Rate: <strong>${fd.rate}%</strong> &nbsp;|&nbsp;
+    Maturity Value: <strong>${fmt(calc.maturityValue)}</strong><br>
+    <span style="font-size:.8rem;opacity:.8">The maturity value has been pre-filled as the new principal. You can change it.</span>`;
+
+  document.getElementById('rPrincipal').value = calc.maturityValue;
+  document.getElementById('rRate').value      = fd.rate;
+  document.getElementById('rStart').value     = fd.maturityDate;
+  document.getElementById('rMaturity').value  = '';
+  document.getElementById('rComp').value      = fd.compounding;
+  document.getElementById('rNotes').value     = 'Renewed from ' + (fd.fdNum || fd.bank);
+
+  document.getElementById('renewalModal').classList.add('open');
+}
+
+function closeRenewalModal() {
+  document.getElementById('renewalModal').classList.remove('open');
+  renewingId = null;
+}
+
+function confirmRenewal() {
+  const oldFD     = fds.find(f => f.id === renewingId);
+  if (!oldFD) return;
+
+  const principal = document.getElementById('rPrincipal').value;
+  const rate      = document.getElementById('rRate').value;
+  const start     = document.getElementById('rStart').value;
+  const mat       = document.getElementById('rMaturity').value;
+  const comp      = document.getElementById('rComp').value;
+  const notes     = document.getElementById('rNotes').value.trim();
+
+  if (!principal || !rate || !start || !mat) { showToast('⚠️ Fill all required fields', 'warn'); return; }
+  if (new Date(mat) <= new Date(start))      { showToast('⚠️ Maturity must be after start', 'warn'); return; }
+
+  const newId = Date.now().toString();
+
+  // Mark old FD as renewed
+  const idx = fds.findIndex(f => f.id === renewingId);
+  fds[idx].renewedToId = newId;
+
+  // Create new FD linked to old
+  fds.push({
+    id: newId,
+    bank:       oldFD.bank,
+    fdNum:      (oldFD.fdNum || 'FD') + '-R' + (Date.now() % 1000),
+    principal, rate,
+    startDate:  start,
+    maturityDate: mat,
+    compounding: comp,
+    notes,
+    renewedFromId: renewingId,
+    renewedToId:   null,
+    createdAt: new Date().toISOString(),
+  });
+
+  save(); render(); closeRenewalModal();
+  showToast('🔄 FD renewed successfully! New FD linked to original.');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  HISTORY MODAL
+// ════════════════════════════════════════════════════════════════════════════
+function openHistory(id) {
+  // Walk chain to root
+  let chain = [];
+  let cur = fds.find(f => f.id === id);
+  while (cur && cur.renewedFromId) {
+    cur = fds.find(f => f.id === cur.renewedFromId);
+  }
+  // Walk forward
+  while (cur) {
+    chain.push(cur);
+    cur = cur.renewedToId ? fds.find(f => f.id === cur.renewedToId) : null;
   }
 
-  function save() {
-    localStorage.setItem('fd_tracker_v2', JSON.stringify(fds));
-  }
+  const currentStatus = getStatus(fds.find(f => f.id === id));
 
-  // ─── Toast ───────────────────────────────────────────────────────────────────
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2800);
-  }
+  const html = `<div class="history-chain">` + chain.map((fd, i) => {
+    const calc   = calcFD(fd);
+    const status = getStatus(fd);
+    const isActive = fd.id === id;
+    return `<div class="history-item">
+      <div class="history-dot ${isActive ? 'active-dot' : ''}"></div>
+      <div class="history-content">
+        <div class="history-title">${esc(fd.fdNum || fd.bank)} ${isActive ? '← current' : ''}</div>
+        <div class="history-meta">
+          Principal: ${fmt(fd.principal)} &nbsp;·&nbsp; Rate: ${fd.rate}% &nbsp;·&nbsp; ${compLabel(fd.compounding)}<br>
+          ${fmtDate(fd.startDate)} → ${fmtDate(fd.maturityDate)}<br>
+          Maturity value: <strong>${fmt(calc.maturityValue)}</strong> &nbsp;·&nbsp;
+          <span class="badge ${
+            status==='Matured' ? 'badge-matured' :
+            status==='Renewed' ? 'badge-renewed' :
+            status==='Upcoming' ? 'badge-upcoming' : 'badge-active'
+          }">${status}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('') + `</div>`;
 
-  // ─── Live refresh every minute ───────────────────────────────────────────────
-  render();
-  setInterval(render, 60000);
+  document.getElementById('historyBody').innerHTML = html;
+  document.getElementById('historyModal').classList.add('open');
+}
+
+function closeHistoryModal() {
+  document.getElementById('historyModal').classList.remove('open');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  FILTER & COLLAPSE
+// ════════════════════════════════════════════════════════════════════════════
+function setFilter(bank) {
+  activeFilter = bank;
+  renderBankSections();
+  renderFilterTabs([...new Set(fds.map(f => f.bank.trim()))].sort());
+}
+
+function toggleCollapse(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('collapsed');
+  sessionStorage.setItem('collapsed-' + id, el.classList.contains('collapsed') ? '1' : '0');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  THEME
+// ════════════════════════════════════════════════════════════════════════════
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('fd_theme', theme);
+  document.getElementById('themeBtn').textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+// Init theme: saved preference → system preference → light
+(function initTheme() {
+  const saved  = localStorage.getItem('fd_theme');
+  const system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  applyTheme(saved || system);
+})();
+
+// Auto-follow system theme changes (when no manual override)
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+  if (!localStorage.getItem('fd_theme')) applyTheme(e.matches ? 'dark' : 'light');
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════════════════════════
+function showToast(msg, type) {
+  const container = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  container.appendChild(t);
+  requestAnimationFrame(() => { requestAnimationFrame(() => t.classList.add('show')); });
+  setTimeout(() => {
+    t.classList.remove('show');
+    setTimeout(() => t.remove(), 400);
+  }, 2800);
+}
+
+// Close modals on backdrop click
+document.getElementById('renewalModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeRenewalModal();
+});
+document.getElementById('historyModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeHistoryModal();
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════════════════════
+document.getElementById('fStart').valueAsDate = new Date();
+render();
+setInterval(render, 60000); // refresh every minute
 </script>
 </body>
 </html>
